@@ -99,6 +99,7 @@ class PaymentService:
                 amount=int(float(payment.amount) * 100),
                 currency=CURRENCY,
                 metadata={"booking_id": str(payment.booking_id)},
+                idempotency_key=f"payment_intent:{payment.id}",
             )
             payment.stripe_payment_intent_id = intent.id
             payment.status = PaymentStatus.REQUIRES_PAYMENT_METHOD
@@ -175,6 +176,7 @@ class PaymentService:
                 currency=CURRENCY,
                 destination=driver.payment_details,
                 metadata={"booking_id": str(booking_id)},
+                idempotency_key=f"payout:{booking_id}",
             )
         except Exception as exc:
             payment_circuit_breaker.record_failure()
