@@ -37,13 +37,18 @@ def test_register_verify_login(db_session):
     assert email_service.verification_emails[0][0] == "ada@example.com"
     token = email_service.verification_emails[0][2]
 
-    service.verify_email(db_session, token)
+    verified_user, access_token, refresh_token = service.verify_email(db_session, token)
     db_session.commit()
 
     assert email_service.welcome_emails[0][0] == "ada@example.com"
-
-    access_token = service.login(db_session, "ada@example.com", "pass1234")
     assert access_token
+    assert refresh_token
+    assert verified_user.is_email_verified
+
+    logged_in_user, access_token, refresh_token = service.login(db_session, "ada@example.com", "pass1234")
+    assert access_token
+    assert refresh_token
+    assert logged_in_user.id
 
 
 def test_forgot_password_sends_email(db_session):
