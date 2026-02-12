@@ -2,6 +2,8 @@
 
 from pydantic import BaseModel, EmailStr, Field
 
+from app.schemas.user import UserPrivateResponse
+
 
 class RegisterRequest(BaseModel):
     first_name: str = Field(min_length=1, max_length=100)
@@ -25,6 +27,14 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    refresh_token: str | None = None
+
+
+class AuthTokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    user: UserPrivateResponse
 
 
 class VerifyEmailRequest(BaseModel):
@@ -41,4 +51,8 @@ class ResetPasswordRequest(BaseModel):
 
 
 class GoogleAuthRequest(BaseModel):
+    id_token: str
+
+
+class GoogleMobileAuthRequest(BaseModel):
     id_token: str
