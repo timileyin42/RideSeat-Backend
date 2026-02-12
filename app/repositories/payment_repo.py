@@ -1,12 +1,14 @@
 """Payment repository."""
 
 from uuid import UUID
+from datetime import datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.constants import PaymentStatus
 from app.models.payment import Payment
+from app.models.booking import Booking
 
 
 class PaymentRepository:
@@ -45,3 +47,23 @@ class PaymentRepository:
     def sum_platform_fees(self, db: Session) -> float:
         stmt = select(func.coalesce(func.sum(Payment.platform_fee), 0)).where(Payment.status == PaymentStatus.SUCCEEDED)
         return float(db.execute(stmt).scalar_one())
+
+    def list_by_passenger_between(
+        self,
+        db: Session,
+        passenger_id: UUID,
+        start: datetime,
+        end: datetime,
+    ) -> list[Payment]:
+        stmt = (
+            select(Payment)
+            .join(Booking, Booking.id == Payment.booking_id)
+            .where(
+                Booking.passenger_id == passenger_id,
+                Payment.created_at >= start,
+                Payment.created_at <= end,
+                Payment.status == PaymentStatus.SUCCEEDED,
+            )
+            .order_by(Payment.created_at.desc())
+        )
+        return list(db.execute(stmt).scalars().all())
