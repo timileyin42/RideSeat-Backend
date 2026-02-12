@@ -19,6 +19,7 @@ class Trip(Base):
     departure_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     available_seats: Mapped[int] = mapped_column(Integer)
     price_per_seat: Mapped[float] = mapped_column(Numeric(10, 2))
+    toll_fee: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
     vehicle_make: Mapped[str] = mapped_column(String(100))
     vehicle_model: Mapped[str] = mapped_column(String(100))
     vehicle_color: Mapped[str] = mapped_column(String(50))
