@@ -14,3 +14,7 @@ __pycache__/
 *.sqlite3
 *.db
 AGENTS.md
+prompt.md
+api.md
+dir.md
+prd.md
