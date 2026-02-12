@@ -75,3 +75,24 @@ class EmailService:
             },
         )
         self._send(email, "Trip completed", html)
+
+    def send_booking_request_email(
+        self,
+        email: str,
+        first_name: str,
+        passenger_name: str,
+        origin_city: str,
+        destination_city: str,
+        departure_time: str,
+    ) -> None:
+        html = self._render_template(
+            "booking_request.html",
+            {
+                "first_name": first_name,
+                "passenger_name": passenger_name,
+                "origin_city": origin_city,
+                "destination_city": destination_city,
+                "departure_time": departure_time,
+            },
+        )
+        self._send(email, "New booking request", html)
