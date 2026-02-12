@@ -9,7 +9,7 @@ from google.oauth2 import id_token as google_id_token
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.core.security import create_access_token, hash_password, verify_password
+from app.core.security import create_access_token, create_refresh_token, hash_password, verify_password
 from app.models.user import User
 from app.repositories.user_repo import UserRepository
 from app.services.email_service import EmailService
@@ -48,15 +48,16 @@ class AuthService:
         self.email_service.send_verification_email(saved.email, saved.first_name, saved.email_verification_token)
         return saved
 
-    def login(self, db: Session, email: str, password: str) -> str:
+    def login(self, db: Session, email: str, password: str) -> tuple[User, str, str]:
         user = self.user_repo.get_by_email(db, email)
         if not user or not verify_password(password, user.password_hash):
             raise ValueError("Invalid credentials")
         if not user.is_email_verified:
             raise ValueError("Email not verified")
-        return create_access_token(subject=str(user.id))
+        access_token, refresh_token = self._issue_tokens(user)
+        return user, access_token, refresh_token
 
-    def verify_email(self, db: Session, token: str) -> User:
+    def verify_email(self, db: Session, token: str) -> tuple[User, str, str]:
         user = self.user_repo.get_by_verification_token(db, token)
         if not user:
             raise ValueError("Invalid verification token")
@@ -67,7 +68,8 @@ class AuthService:
         user.email_verification_expires_at = None
         updated = self.user_repo.update(db, user)
         self.email_service.send_welcome_email(updated.email, updated.first_name)
-        return updated
+        access_token, refresh_token = self._issue_tokens(updated)
+        return updated, access_token, refresh_token
 
     def forgot_password(self, db: Session, email: str) -> User:
         user = self.user_repo.get_by_email(db, email)
@@ -90,7 +92,7 @@ class AuthService:
         user.password_reset_expires_at = None
         return self.user_repo.update(db, user)
 
-    def google_auth(self, db: Session, id_token: str) -> str:
+    def google_auth(self, db: Session, id_token: str) -> tuple[User, str, str]:
         if not id_token:
             raise ValueError("Invalid Google token")
         settings = get_settings()
@@ -120,4 +122,15 @@ class AuthService:
                 email_verification_token=None,
             )
             user = self.user_repo.create(db, user)
-        return create_access_token(subject=str(user.id))
+        elif not user.is_email_verified:
+            user.is_email_verified = True
+            user.email_verification_token = None
+            user.email_verification_expires_at = None
+            user = self.user_repo.update(db, user)
+        access_token, refresh_token = self._issue_tokens(user)
+        return user, access_token, refresh_token
+
+    def _issue_tokens(self, user: User) -> tuple[str, str]:
+        access_token = create_access_token(subject=str(user.id))
+        refresh_token = create_refresh_token(subject=str(user.id))
+        return access_token, refresh_token

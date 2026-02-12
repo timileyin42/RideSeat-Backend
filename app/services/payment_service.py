@@ -2,6 +2,7 @@
 
 import stripe
 import time
+from datetime import timedelta
 from threading import Lock
 from sqlalchemy.orm import Session
 from uuid import UUID
@@ -15,6 +16,7 @@ from app.repositories.booking_repo import BookingRepository
 from app.repositories.payment_repo import PaymentRepository
 from app.repositories.trip_repo import TripRepository
 from app.repositories.user_repo import UserRepository
+from app.utils.datetime import now_utc
 
 
 class CircuitBreaker:
@@ -148,6 +150,20 @@ class PaymentService:
         if not payment:
             raise ValueError("Payment not found")
         return payment
+
+    def list_payment_history(self, db: Session, passenger_id: UUID, period: str) -> list[Payment]:
+        now = now_utc()
+        if period == "7d":
+            start = now - timedelta(days=7)
+        elif period == "30d":
+            start = now - timedelta(days=30)
+        elif period == "6m":
+            start = now - timedelta(days=182)
+        elif period == "1y":
+            start = now - timedelta(days=365)
+        else:
+            raise ValueError("Invalid period")
+        return self.payment_repo.list_by_passenger_between(db, passenger_id, start=start, end=now)
 
     def create_payout_for_booking(self, db: Session, booking_id: UUID) -> Payment:
         booking = self.booking_repo.get_by_id(db, booking_id)

@@ -4,7 +4,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.core.constants import BookingStatus
+from app.core.constants import BookingStatus, UserRole
 from app.models.booking import Booking
 from app.models.user import User
 from app.repositories.booking_repo import BookingRepository
@@ -77,10 +77,31 @@ class BookingService:
             status=BookingStatus.PENDING,
             total_amount=total_amount,
         )
-        return self.booking_repo.create(db, booking)
+        created = self.booking_repo.create(db, booking)
+        driver = self.user_repo.get_by_id(db, trip.driver_id)
+        if driver:
+            self.email_service.send_booking_request_email(
+                driver.email,
+                driver.first_name or "Driver",
+                passenger.first_name or "Passenger",
+                trip.origin_city,
+                trip.destination_city,
+                trip.departure_time.isoformat(),
+            )
+        return created
 
     def list_bookings(self, db: Session, passenger: User) -> list[Booking]:
         return self.booking_repo.list_by_user(db, passenger.id)
+
+    def list_bookings_for_driver(
+        self,
+        db: Session,
+        driver: User,
+        status: BookingStatus | None = None,
+    ) -> list[Booking]:
+        if driver.role not in {UserRole.DRIVER, UserRole.BOTH}:
+            raise ValueError("Driver role required")
+        return self.booking_repo.list_by_driver(db, driver.id, status=status)
 
     def list_all_bookings(self, db: Session, actor: User, limit: int | None = None, offset: int | None = None) -> list[Booking]:
         if not actor.is_admin:
