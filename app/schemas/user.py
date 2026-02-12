@@ -40,6 +40,7 @@ class UserUpdate(UserBase):
     notify_push: bool | None = None
     notify_sms: bool | None = None
     notify_email: bool | None = None
+    notify_in_app: bool | None = None
     marketing_emails: bool | None = None
 
 
@@ -62,6 +63,7 @@ class UserPrivateResponse(UserPublicResponse):
     notify_push: bool
     notify_sms: bool
     notify_email: bool
+    notify_in_app: bool
     marketing_emails: bool
     created_at: datetime
 

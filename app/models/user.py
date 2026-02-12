@@ -34,6 +34,7 @@ class User(Base):
     notify_push: Mapped[bool] = mapped_column(Boolean, default=True)
     notify_sms: Mapped[bool] = mapped_column(Boolean, default=True)
     notify_email: Mapped[bool] = mapped_column(Boolean, default=True)
+    notify_in_app: Mapped[bool] = mapped_column(Boolean, default=True)
     marketing_emails: Mapped[bool] = mapped_column(Boolean, default=False)
     vehicle_photo_url: Mapped[str | None] = mapped_column(String(500), default=None)
     vehicle_make: Mapped[str | None] = mapped_column(String(100), default=None)
@@ -67,3 +68,5 @@ class User(Base):
     messages = relationship("Message", back_populates="sender", cascade="all, delete-orphan")
     reviews_written = relationship("Review", back_populates="reviewer", foreign_keys="Review.reviewer_id")
     reviews_received = relationship("Review", back_populates="reviewee", foreign_keys="Review.reviewee_id")
+    devices = relationship("Device", back_populates="user", cascade="all, delete-orphan")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")

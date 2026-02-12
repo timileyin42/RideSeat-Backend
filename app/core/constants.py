@@ -55,5 +55,19 @@ class ReviewRatingRange(StrEnum):
     MAX = "5"
 
 
+class DevicePlatform(StrEnum):
+    IOS = "ios"
+    ANDROID = "android"
+    WEB = "web"
+
+
+class NotificationType(StrEnum):
+    BOOKING_REQUEST = "BOOKING_REQUEST"
+    BOOKING_CANCELLED = "BOOKING_CANCELLED"
+    TRIP_COMPLETED = "TRIP_COMPLETED"
+    MESSAGE_RECEIVED = "MESSAGE_RECEIVED"
+    REVIEW_RECEIVED = "REVIEW_RECEIVED"
+
+
 PLATFORM_FEE_PERCENT = 0.1
 CURRENCY = "usd"

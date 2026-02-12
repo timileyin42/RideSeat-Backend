@@ -32,6 +32,9 @@ class Settings:
     spotify_playlist_url: str
     referral_base_url: str
     refresh_token_expire_days: int
+    termii_api_key: str
+    termii_sender_id: str
+    termii_base_url: str
 
 
 @lru_cache
@@ -62,4 +65,7 @@ def get_settings() -> Settings:
         spotify_playlist_url=os.getenv("SPOTIFY_PLAYLIST_URL", ""),
         referral_base_url=os.getenv("REFERRAL_BASE_URL", ""),
         refresh_token_expire_days=int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30")),
+        termii_api_key=os.getenv("TERMII_API_KEY", ""),
+        termii_sender_id=os.getenv("TERMII_SENDER_ID", ""),
+        termii_base_url=os.getenv("TERMII_BASE_URL", "https://api.ng.termii.com"),
     )

@@ -6,6 +6,8 @@ from uuid import UUID
 
 from app.core.dependencies import get_current_user, get_db
 from app.repositories.booking_repo import BookingRepository
+from app.repositories.device_repo import DeviceRepository
+from app.repositories.notification_repo import NotificationRepository
 from app.repositories.payment_repo import PaymentRepository
 from app.repositories.trip_repo import TripRepository
 from app.repositories.booking_repo import BookingRepository
@@ -17,6 +19,7 @@ from app.schemas.user import UserPrivateResponse
 from app.services.booking_service import BookingService
 from app.services.admin_service import AdminService
 from app.services.email_service import EmailService
+from app.services.notification_service import NotificationService
 from app.services.payment_service import PaymentService
 from app.services.trip_service import TripService
 from app.services.user_service import UserService
@@ -25,11 +28,13 @@ router = APIRouter()
 user_service = UserService(UserRepository(), BookingRepository())
 trip_service = TripService(TripRepository())
 payment_service = PaymentService(PaymentRepository(), BookingRepository(), TripRepository(), UserRepository())
+notification_service = NotificationService(DeviceRepository(), NotificationRepository(), UserRepository())
 booking_service = BookingService(
     BookingRepository(),
     TripRepository(),
     UserRepository(),
     EmailService(),
+    notification_service,
     payment_service,
 )
 admin_service = AdminService(

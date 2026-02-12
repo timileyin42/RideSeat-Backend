@@ -15,12 +15,21 @@ from app.services.message_service import MessageService
 from app.utils.datetime import now_utc
 
 
+class StubNotificationService:
+    def __init__(self) -> None:
+        self.notifications: list[tuple[str, str]] = []
+
+    def create_notification(self, db_session, user_id, notification_type, title, body):
+        self.notifications.append((str(user_id), title))
+
+
 def test_send_and_list_messages(db_session):
     user_repo = UserRepository()
     trip_repo = TripRepository()
     booking_repo = BookingRepository()
     message_repo = MessageRepository()
-    service = MessageService(message_repo, booking_repo, trip_repo)
+    notification_service = StubNotificationService()
+    service = MessageService(message_repo, booking_repo, trip_repo, notification_service)
 
     driver = user_repo.create(
         db_session,
@@ -84,7 +93,8 @@ def test_send_message_rejects_non_participant(db_session):
     trip_repo = TripRepository()
     booking_repo = BookingRepository()
     message_repo = MessageRepository()
-    service = MessageService(message_repo, booking_repo, trip_repo)
+    notification_service = StubNotificationService()
+    service = MessageService(message_repo, booking_repo, trip_repo, notification_service)
 
     driver = user_repo.create(
         db_session,

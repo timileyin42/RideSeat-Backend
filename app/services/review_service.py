@@ -4,12 +4,13 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.core.constants import BookingStatus
+from app.core.constants import BookingStatus, NotificationType
 from app.models.review import Review
 from app.models.user import User
 from app.repositories.booking_repo import BookingRepository
 from app.repositories.review_repo import ReviewRepository
 from app.repositories.user_repo import UserRepository
+from app.services.notification_service import NotificationService
 
 
 class ReviewService:
@@ -18,10 +19,12 @@ class ReviewService:
         review_repo: ReviewRepository,
         booking_repo: BookingRepository,
         user_repo: UserRepository,
+        notification_service: NotificationService,
     ) -> None:
         self.review_repo = review_repo
         self.booking_repo = booking_repo
         self.user_repo = user_repo
+        self.notification_service = notification_service
 
     def create_review(
         self,
@@ -51,6 +54,13 @@ class ReviewService:
         reviewee.rating_count = new_count
         reviewee.rating_avg = round(new_avg, 2)
         self.user_repo.update(db, reviewee)
+        self.notification_service.create_notification(
+            db,
+            reviewee.id,
+            NotificationType.REVIEW_RECEIVED,
+            "New review",
+            f"{reviewer.first_name or 'Passenger'} left you a review.",
+        )
         return saved
 
     def list_reviews(self, db: Session, user_id: UUID) -> list[Review]:

@@ -4,13 +4,14 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.core.constants import BookingStatus, UserRole
+from app.core.constants import BookingStatus, NotificationType, UserRole
 from app.models.booking import Booking
 from app.models.user import User
 from app.repositories.booking_repo import BookingRepository
 from app.repositories.trip_repo import TripRepository
 from app.repositories.user_repo import UserRepository
 from app.services.email_service import EmailService
+from app.services.notification_service import NotificationService
 from app.services.payment_service import PaymentService
 from app.utils.datetime import ensure_utc, now_utc
 from app.utils.pagination import normalize_pagination
@@ -23,12 +24,14 @@ class BookingService:
         trip_repo: TripRepository,
         user_repo: UserRepository,
         email_service: EmailService,
+        notification_service: NotificationService,
         payment_service: PaymentService,
     ) -> None:
         self.booking_repo = booking_repo
         self.trip_repo = trip_repo
         self.user_repo = user_repo
         self.email_service = email_service
+        self.notification_service = notification_service
         self.payment_service = payment_service
 
     def _handle_completion(self, db: Session, booking: Booking, trip) -> None:
@@ -45,6 +48,13 @@ class BookingService:
                 trip.destination_city,
                 departure_time,
             )
+            self.notification_service.create_notification(
+                db,
+                passenger.id,
+                NotificationType.TRIP_COMPLETED,
+                "Trip completed",
+                f"Your trip from {trip.origin_city} to {trip.destination_city} is completed.",
+            )
         if driver:
             driver.trips_completed += 1
             self.user_repo.update(db, driver)
@@ -55,7 +65,54 @@ class BookingService:
                 trip.destination_city,
                 departure_time,
             )
+            self.notification_service.create_notification(
+                db,
+                driver.id,
+                NotificationType.TRIP_COMPLETED,
+                "Trip completed",
+                f"Your trip from {trip.origin_city} to {trip.destination_city} is completed.",
+            )
         self.payment_service.trigger_payout_background(booking.id)
+
+    def _handle_cancellation(self, db: Session, booking: Booking, trip, actor: User) -> None:
+        passenger = self.user_repo.get_by_id(db, booking.passenger_id)
+        driver = self.user_repo.get_by_id(db, trip.driver_id)
+        if actor.id == booking.passenger_id and driver:
+            self.notification_service.create_notification(
+                db,
+                driver.id,
+                NotificationType.BOOKING_CANCELLED,
+                "Booking cancelled",
+                f"A booking for your trip from {trip.origin_city} to {trip.destination_city} was cancelled.",
+            )
+        if actor.id == trip.driver_id and passenger:
+            self.notification_service.create_notification(
+                db,
+                passenger.id,
+                NotificationType.BOOKING_CANCELLED,
+                "Booking cancelled",
+                f"Your booking for the trip from {trip.origin_city} to {trip.destination_city} was cancelled.",
+            )
+
+    def _handle_admin_cancellation(self, db: Session, booking: Booking, trip) -> None:
+        passenger = self.user_repo.get_by_id(db, booking.passenger_id)
+        driver = self.user_repo.get_by_id(db, trip.driver_id)
+        if passenger:
+            self.notification_service.create_notification(
+                db,
+                passenger.id,
+                NotificationType.BOOKING_CANCELLED,
+                "Booking cancelled",
+                f"Your booking for the trip from {trip.origin_city} to {trip.destination_city} was cancelled.",
+            )
+        if driver:
+            self.notification_service.create_notification(
+                db,
+                driver.id,
+                NotificationType.BOOKING_CANCELLED,
+                "Booking cancelled",
+                f"A booking for your trip from {trip.origin_city} to {trip.destination_city} was cancelled.",
+            )
 
     def create_booking(self, db: Session, passenger: User, trip_id: UUID, seats: int) -> Booking:
         trip = self.trip_repo.get_by_id_for_update(db, trip_id)
@@ -87,6 +144,13 @@ class BookingService:
                 trip.origin_city,
                 trip.destination_city,
                 trip.departure_time.isoformat(),
+            )
+            self.notification_service.create_notification(
+                db,
+                driver.id,
+                NotificationType.BOOKING_REQUEST,
+                "New booking request",
+                f"{passenger.first_name or 'Passenger'} requested a seat from {trip.origin_city} to {trip.destination_city}.",
             )
         return created
 
@@ -137,6 +201,8 @@ class BookingService:
         updated = self.booking_repo.update(db, booking)
         if status == BookingStatus.COMPLETED:
             self._handle_completion(db, booking, trip)
+        if status == BookingStatus.CANCELLED:
+            self._handle_cancellation(db, booking, trip, actor)
         return updated
 
     def resolve_dispute(self, db: Session, actor: User, booking_id: UUID, status: BookingStatus) -> Booking:
@@ -156,6 +222,8 @@ class BookingService:
         updated = self.booking_repo.update(db, booking)
         if status == BookingStatus.COMPLETED:
             self._handle_completion(db, booking, trip)
+        if status == BookingStatus.CANCELLED:
+            self._handle_admin_cancellation(db, booking, trip)
         return updated
 
     def cancel_booking(self, db: Session, actor: User, booking_id: UUID) -> Booking:

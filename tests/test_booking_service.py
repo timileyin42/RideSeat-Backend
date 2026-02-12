@@ -34,13 +34,22 @@ class StubPaymentService:
         self.payouts.append(str(booking_id))
 
 
+class StubNotificationService:
+    def __init__(self) -> None:
+        self.notifications: list[tuple[str, str]] = []
+
+    def create_notification(self, db_session, user_id, notification_type, title, body):
+        self.notifications.append((str(user_id), title))
+
+
 def test_complete_booking_sends_emails(db_session):
     user_repo = UserRepository()
     trip_repo = TripRepository()
     booking_repo = BookingRepository()
     email_service = StubEmailService()
     payment_service = StubPaymentService()
-    service = BookingService(booking_repo, trip_repo, user_repo, email_service, payment_service)
+    notification_service = StubNotificationService()
+    service = BookingService(booking_repo, trip_repo, user_repo, email_service, notification_service, payment_service)
 
     driver = user_repo.create(
         db_session,

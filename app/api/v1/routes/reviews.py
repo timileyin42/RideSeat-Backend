@@ -6,13 +6,17 @@ from uuid import UUID
 
 from app.core.dependencies import get_current_user, get_db
 from app.repositories.booking_repo import BookingRepository
+from app.repositories.device_repo import DeviceRepository
+from app.repositories.notification_repo import NotificationRepository
 from app.repositories.review_repo import ReviewRepository
 from app.repositories.user_repo import UserRepository
 from app.schemas.review import ReviewCreate, ReviewResponse
 from app.services.review_service import ReviewService
+from app.services.notification_service import NotificationService
 
 router = APIRouter()
-review_service = ReviewService(ReviewRepository(), BookingRepository(), UserRepository())
+notification_service = NotificationService(DeviceRepository(), NotificationRepository(), UserRepository())
+review_service = ReviewService(ReviewRepository(), BookingRepository(), UserRepository(), notification_service)
 
 
 @router.post("", response_model=ReviewResponse)

@@ -13,12 +13,21 @@ from app.services.review_service import ReviewService
 from app.utils.datetime import now_utc
 
 
+class StubNotificationService:
+    def __init__(self) -> None:
+        self.notifications: list[tuple[str, str]] = []
+
+    def create_notification(self, db_session, user_id, notification_type, title, body):
+        self.notifications.append((str(user_id), title))
+
+
 def test_review_updates_user_rating(db_session):
     user_repo = UserRepository()
     trip_repo = TripRepository()
     booking_repo = BookingRepository()
     review_repo = ReviewRepository()
-    service = ReviewService(review_repo, booking_repo, user_repo)
+    notification_service = StubNotificationService()
+    service = ReviewService(review_repo, booking_repo, user_repo, notification_service)
 
     driver = user_repo.create(
         db_session,
