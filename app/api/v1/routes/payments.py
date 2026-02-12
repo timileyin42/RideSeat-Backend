@@ -3,6 +3,7 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
 from sqlalchemy.orm import Session
 from uuid import UUID
+from fastapi import Query
 
 from app.core.dependencies import get_current_user, get_db, rate_limit
 from app.repositories.booking_repo import BookingRepository
@@ -51,6 +52,19 @@ async def stripe_webhook(
         return payment
     except ValueError as exc:
         db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/history", response_model=list[PaymentResponse])
+def list_payment_history(
+    period: str = Query(pattern="^(7d|30d|6m|1y)$"),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+    _=Depends(rate_limit("payments_history", limit=20, window_seconds=60)),
+):
+    try:
+        return payment_service.list_payment_history(db, current_user.id, period)
+    except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 

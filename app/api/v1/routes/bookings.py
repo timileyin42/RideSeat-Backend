@@ -1,9 +1,10 @@
 """Booking routes."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from uuid import UUID
 
+from app.core.constants import BookingStatus
 from app.core.dependencies import get_current_user, get_db, rate_limit
 from app.repositories.booking_repo import BookingRepository
 from app.repositories.payment_repo import PaymentRepository
@@ -47,6 +48,18 @@ def list_my_bookings(
     current_user=Depends(get_current_user),
 ):
     return booking_service.list_bookings(db, current_user)
+
+
+@router.get("/driver", response_model=list[BookingResponse])
+def list_driver_bookings(
+    status: BookingStatus | None = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    try:
+        return booking_service.list_bookings_for_driver(db, current_user, status=status)
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
 @router.patch("/{booking_id}/status", response_model=BookingResponse)

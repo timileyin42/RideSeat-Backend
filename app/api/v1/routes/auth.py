@@ -5,13 +5,14 @@ from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_db, rate_limit
 from app.schemas.auth import (
+    AuthTokenResponse,
     ForgotPasswordRequest,
     GoogleAuthRequest,
+    GoogleMobileAuthRequest,
     LoginRequest,
     RegisterRequest,
     RegisterResponse,
     ResetPasswordRequest,
-    TokenResponse,
     VerifyEmailRequest,
 )
 from app.services.auth_service import AuthService
@@ -44,7 +45,7 @@ def register(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=AuthTokenResponse)
 async def login(
     request: Request,
     db: Session = Depends(get_db),
@@ -62,29 +63,44 @@ async def login(
             password = payload.password
         if not email or not password:
             raise ValueError("Invalid credentials")
-        token = auth_service.login(db, email, password)
-        return TokenResponse(access_token=token)
+        user, access_token, refresh_token = auth_service.login(db, email, password)
+        return AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user)
     except ValueError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
 
 
-@router.post("/google", response_model=TokenResponse)
+@router.post("/google", response_model=AuthTokenResponse)
 def google_auth(payload: GoogleAuthRequest, db: Session = Depends(get_db)):
     try:
-        token = auth_service.google_auth(db, payload.id_token)
+        user, access_token, refresh_token = auth_service.google_auth(db, payload.id_token)
         db.commit()
-        return TokenResponse(access_token=token)
+        return AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.post("/verify-email")
+@router.post("/google/mobile", response_model=AuthTokenResponse)
+def google_mobile_auth(
+    payload: GoogleMobileAuthRequest,
+    db: Session = Depends(get_db),
+    _=Depends(rate_limit("auth_google_mobile", limit=10, window_seconds=60)),
+):
+    try:
+        user, access_token, refresh_token = auth_service.google_auth(db, payload.id_token)
+        db.commit()
+        return AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user)
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/verify-email", response_model=AuthTokenResponse)
 def verify_email(payload: VerifyEmailRequest, db: Session = Depends(get_db)):
     try:
-        auth_service.verify_email(db, payload.token)
+        user, access_token, refresh_token = auth_service.verify_email(db, payload.token)
         db.commit()
-        return {"status": "verified"}
+        return AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc

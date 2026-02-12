@@ -8,6 +8,7 @@ from app.core.dependencies import get_current_user, get_db
 from app.repositories.booking_repo import BookingRepository
 from app.repositories.payment_repo import PaymentRepository
 from app.repositories.trip_repo import TripRepository
+from app.repositories.booking_repo import BookingRepository
 from app.repositories.user_repo import UserRepository
 from app.schemas.admin import AdminMetricsResponse
 from app.schemas.booking import BookingDisputeResolve, BookingResponse
@@ -21,7 +22,7 @@ from app.services.trip_service import TripService
 from app.services.user_service import UserService
 
 router = APIRouter()
-user_service = UserService(UserRepository())
+user_service = UserService(UserRepository(), BookingRepository())
 trip_service = TripService(TripRepository())
 payment_service = PaymentService(PaymentRepository(), BookingRepository(), TripRepository(), UserRepository())
 booking_service = BookingService(
