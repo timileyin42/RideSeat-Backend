@@ -9,6 +9,32 @@ class UserRole(StrEnum):
     BOTH = "BOTH"
 
 
+class Gender(StrEnum):
+    MALE = "MALE"
+    FEMALE = "FEMALE"
+    NON_BINARY = "NON_BINARY"
+    OTHER = "OTHER"
+    PREFER_NOT_TO_SAY = "PREFER_NOT_TO_SAY"
+
+
+class SmokingPreference(StrEnum):
+    SMOKING = "SMOKING"
+    NO_SMOKING = "NO_SMOKING"
+
+
+class ChatPreference(StrEnum):
+    QUIET = "QUIET"
+    OK_TO_CHAT = "OK_TO_CHAT"
+    CHATTY = "CHATTY"
+
+
+class LuggageSize(StrEnum):
+    NO_LUGGAGE = "NO_LUGGAGE"
+    SMALL = "SMALL"
+    MEDIUM = "MEDIUM"
+    LARGE = "LARGE"
+
+
 class BookingStatus(StrEnum):
     PENDING = "PENDING"
     CONFIRMED = "CONFIRMED"

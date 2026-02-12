@@ -29,6 +29,9 @@ class Settings:
     admin_last_name: str
     celery_broker_url: str
     celery_result_backend: str
+    spotify_playlist_url: str
+    referral_base_url: str
+    refresh_token_expire_days: int
 
 
 @lru_cache
@@ -56,4 +59,7 @@ def get_settings() -> Settings:
         admin_last_name=os.getenv("ADMIN_LAST_NAME", "User"),
         celery_broker_url=os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0"),
         celery_result_backend=os.getenv("CELERY_RESULT_BACKEND", "redis://redis:6379/1"),
+        spotify_playlist_url=os.getenv("SPOTIFY_PLAYLIST_URL", ""),
+        referral_base_url=os.getenv("REFERRAL_BASE_URL", ""),
+        refresh_token_expire_days=int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30")),
     )
