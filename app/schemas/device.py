@@ -1,6 +1,7 @@
 """Device schemas."""
 
 from datetime import datetime
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -25,7 +26,7 @@ class DeviceTokenUpdateRequest(BaseModel):
 class DeviceResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: str
+    id: UUID
     device_token: str
     platform: DevicePlatform
     device_name: str | None

@@ -1,7 +1,7 @@
 """Admin schemas."""
 
 from pydantic import BaseModel
-
+from uuid import UUID
 
 class AdminMetricsResponse(BaseModel):
     total_users: int

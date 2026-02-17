@@ -2,6 +2,7 @@
 
 from datetime import timedelta
 import secrets
+from urllib import parse
 from uuid import uuid4
 
 from google.auth.transport import requests as google_requests
@@ -95,17 +96,7 @@ class AuthService:
     def google_auth(self, db: Session, id_token: str) -> tuple[User, str, str]:
         if not id_token:
             raise ValueError("Invalid Google token")
-        settings = get_settings()
-        if not settings.google_client_id:
-            raise ValueError("Google OAuth not configured")
-        try:
-            token_info = google_id_token.verify_oauth2_token(
-                id_token,
-                google_requests.Request(),
-                settings.google_client_id,
-            )
-        except ValueError as exc:
-            raise ValueError("Invalid Google token") from exc
+        token_info = self._verify_google_id_token(id_token)
         email = token_info.get("email")
         if not email:
             raise ValueError("Google token missing email")
@@ -120,6 +111,7 @@ class AuthService:
                 password_hash=hash_password(str(uuid4())),
                 is_email_verified=True,
                 email_verification_token=None,
+                profile_photo_url=token_info.get("picture"),
             )
             user = self.user_repo.create(db, user)
         elif not user.is_email_verified:
@@ -127,10 +119,76 @@ class AuthService:
             user.email_verification_token = None
             user.email_verification_expires_at = None
             user = self.user_repo.update(db, user)
+        user = self._sync_google_profile(db, user, token_info)
         access_token, refresh_token = self._issue_tokens(user)
         return user, access_token, refresh_token
+
+    def get_google_authorization_url(self, state: str | None = None) -> str:
+        settings = get_settings()
+        if not settings.google_client_id:
+            raise ValueError("Google OAuth not configured")
+        if not settings.mobile_app_scheme:
+            raise ValueError("Mobile app scheme not configured")
+        if not state:
+            state = self._generate_state()
+        params = {
+            "client_id": settings.google_client_id,
+            "redirect_uri": settings.mobile_app_scheme,
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": state,
+            "access_type": "offline",
+            "prompt": "consent",
+        }
+        query_string = parse.urlencode(params)
+        return f"https://accounts.google.com/o/oauth2/v2/auth?{query_string}"
 
     def _issue_tokens(self, user: User) -> tuple[str, str]:
         access_token = create_access_token(subject=str(user.id))
         refresh_token = create_refresh_token(subject=str(user.id))
         return access_token, refresh_token
+
+    def _verify_google_id_token(self, token: str) -> dict:
+        settings = get_settings()
+        allowed_audiences = [settings.google_client_id, settings.google_mobile_client_id]
+        allowed_audiences = [aud for aud in allowed_audiences if aud]
+        if not allowed_audiences:
+            raise ValueError("Google OAuth not configured")
+        try:
+            token_info = google_id_token.verify_oauth2_token(
+                token,
+                google_requests.Request(),
+            )
+        except ValueError as exc:
+            raise ValueError("Invalid Google token") from exc
+        audience = token_info.get("aud")
+        if audience not in allowed_audiences:
+            raise ValueError("Google token audience mismatch")
+        return token_info
+
+    def _generate_state(self) -> str:
+        return secrets.token_urlsafe(32)
+
+    def _sync_google_profile(self, db: Session, user: User, token_info: dict) -> User:
+        updated = False
+        given_name = token_info.get("given_name")
+        family_name = token_info.get("family_name")
+        picture = token_info.get("picture")
+
+        if given_name and not user.first_name:
+            user.first_name = given_name
+            updated = True
+        if family_name and not user.last_name:
+            user.last_name = family_name
+            updated = True
+        if picture and not user.profile_photo_url:
+            user.profile_photo_url = picture
+            updated = True
+        if not user.is_email_verified:
+            user.is_email_verified = True
+            user.email_verification_token = None
+            user.email_verification_expires_at = None
+            updated = True
+        if updated:
+            return self.user_repo.update(db, user)
+        return user

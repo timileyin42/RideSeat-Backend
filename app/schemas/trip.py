@@ -1,6 +1,7 @@
 """Trip schemas."""
 
 from datetime import datetime
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -38,9 +39,9 @@ class TripUpdate(BaseModel):
 class TripResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: str
+    id: UUID
     driver: UserPublicResponse | None = None
-    driver_id: str
+    driver_id: UUID
     origin_city: str
     destination_city: str
     departure_time: datetime

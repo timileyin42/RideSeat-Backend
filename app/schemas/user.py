@@ -1,6 +1,7 @@
 """User schemas."""
 
 from datetime import datetime, date
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -47,7 +48,7 @@ class UserUpdate(UserBase):
 class UserPublicResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
 
-    id: str
+    id: UUID
     role: UserRole
     rating_avg: float
     rating_count: int

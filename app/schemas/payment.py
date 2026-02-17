@@ -1,7 +1,7 @@
 """Payment schemas."""
 
 from datetime import datetime
-
+from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 from app.core.constants import PaymentStatus

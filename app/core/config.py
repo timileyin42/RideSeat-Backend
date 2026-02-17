@@ -18,7 +18,9 @@ class Settings:
     resend_api_key: str
     email_from: str
     frontend_base_url: str
+    mobile_app_scheme: str | None
     google_client_id: str
+    google_mobile_client_id: str | None
     google_client_secret: str
     gcp_project_id: str
     gcp_storage_bucket: str
@@ -51,7 +53,9 @@ def get_settings() -> Settings:
         resend_api_key=os.getenv("RESEND_API_KEY", ""),
         email_from=os.getenv("EMAIL_FROM", ""),
         frontend_base_url=os.getenv("FRONTEND_BASE_URL", ""),
+        mobile_app_scheme=os.getenv("MOBILE_APP_SCHEME"),
         google_client_id=os.getenv("GOOGLE_CLIENT_ID", ""),
+        google_mobile_client_id=os.getenv("GOOGLE_MOBILE_CLIENT_ID"),
         google_client_secret=os.getenv("GOOGLE_CLIENT_SECRET", ""),
         gcp_project_id=os.getenv("GCP_PROJECT_ID", ""),
         gcp_storage_bucket=os.getenv("GCP_STORAGE_BUCKET", ""),

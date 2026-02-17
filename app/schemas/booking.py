@@ -1,6 +1,7 @@
 """Booking schemas."""
 
 from datetime import datetime
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -23,9 +24,9 @@ class BookingDisputeResolve(BaseModel):
 class BookingResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: str
-    trip_id: str
-    passenger_id: str
+    id: UUID
+    trip_id: UUID
+    passenger_id: UUID
     seats: int
     status: BookingStatus
     total_amount: float
