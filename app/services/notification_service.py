@@ -1,5 +1,6 @@
-"""Notification service."""
+"""Notification service — in-app, SMS, and FCM push."""
 
+import base64
 import json
 from urllib import request as http_request
 from uuid import UUID
@@ -16,6 +17,23 @@ from app.repositories.notification_repo import NotificationRepository
 from app.repositories.user_repo import UserRepository
 from app.utils.datetime import now_utc
 
+# Firebase Admin app is initialised once and reused for all requests
+_firebase_app = None
+
+
+def _get_firebase_app(credentials_json: str):
+    import firebase_admin
+    from firebase_admin import credentials as fb_creds
+
+    global _firebase_app
+    if _firebase_app is not None:
+        return _firebase_app
+    raw = base64.b64decode(credentials_json).decode("utf-8")
+    info = json.loads(raw)
+    cred = fb_creds.Certificate(info)
+    _firebase_app = firebase_admin.initialize_app(cred, name="rideway")
+    return _firebase_app
+
 
 class NotificationService:
     def __init__(
@@ -28,6 +46,8 @@ class NotificationService:
         self.notification_repo = notification_repo
         self.user_repo = user_repo
         self.settings = get_settings()
+
+    # ── device registration ────────────────────────────────────────────────────
 
     def register_device(
         self,
@@ -80,6 +100,8 @@ class NotificationService:
             return self.device_repo.update(db, existing)
         return self.register_device(db, user, new_device_token, platform, device_name, app_version)
 
+    # ── in-app notifications ───────────────────────────────────────────────────
+
     def list_notifications(self, db: Session, user: User, limit: int, offset: int) -> list[Notification]:
         return self.notification_repo.list_by_user(db, user.id, limit=limit, offset=offset)
 
@@ -103,6 +125,8 @@ class NotificationService:
         user = self.user_repo.get_by_id(db, user_id)
         if not user:
             return None
+
+        # 1. In-app notification (stored in DB)
         notification = None
         if user.notify_in_app:
             notification = Notification(
@@ -112,6 +136,19 @@ class NotificationService:
                 body=body,
             )
             notification = self.notification_repo.create(db, notification)
+
+        # 2. FCM push notification
+        if user.notify_push:
+            devices = self.device_repo.list_by_user(db, user_id)
+            stale_tokens: list[Device] = []
+            for device in devices:
+                sent = self._send_push(device.device_token, title, body, notification_type)
+                if not sent:
+                    stale_tokens.append(device)
+            for device in stale_tokens:
+                self.device_repo.delete(db, device)
+
+        # 3. SMS for booking-related events
         if (
             user.notify_sms
             and user.phone_number
@@ -119,7 +156,58 @@ class NotificationService:
             and notification_type in {NotificationType.BOOKING_REQUEST, NotificationType.BOOKING_CANCELLED}
         ):
             self._send_sms(user.phone_number, title, body)
+
         return notification
+
+    # ── FCM push ───────────────────────────────────────────────────────────────
+
+    def _send_push(
+        self,
+        device_token: str,
+        title: str,
+        body: str,
+        notification_type: NotificationType,
+    ) -> bool:
+        """Send an FCM push notification. Returns False if the token is invalid/expired."""
+        creds_json = self.settings.gcp_credentials_json
+        if not creds_json:
+            return True  # No FCM config — silently skip, don't mark token as stale
+
+        try:
+            from firebase_admin import messaging
+
+            _get_firebase_app(creds_json)
+
+            message = messaging.Message(
+                notification=messaging.Notification(title=title, body=body),
+                data={"type": notification_type.value},
+                token=device_token,
+                android=messaging.AndroidConfig(
+                    priority="high",
+                    notification=messaging.AndroidNotification(
+                        sound="default",
+                        channel_id="rideway_notifications",
+                        click_action="FLUTTER_NOTIFICATION_CLICK",
+                    ),
+                ),
+                apns=messaging.APNSConfig(
+                    payload=messaging.APNSPayload(
+                        aps=messaging.Aps(sound="default", badge=1),
+                    ),
+                ),
+            )
+            messaging.send(message)
+            return True
+
+        except Exception as exc:
+            from firebase_admin import messaging as fb_msg
+            # Token no longer registered on FCM — safe to remove from DB
+            if isinstance(exc, fb_msg.UnregisteredError):
+                return False
+            # Any other error (network, config) — don't delete the token
+            return True
+
+    # ── SMS (Termii) ───────────────────────────────────────────────────────────
 
     def _send_sms(self, phone_number: str, title: str, body: str) -> None:
         if not self.settings.termii_api_key or not self.settings.termii_sender_id:

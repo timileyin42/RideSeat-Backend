@@ -32,7 +32,7 @@ def list_messages(
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
-@router.post("/{booking_id}", response_model=MessageResponse)
+@router.post("/{booking_id}", response_model=MessageResponse, status_code=201)
 def send_message(
     booking_id: UUID,
     payload: MessageCreate,

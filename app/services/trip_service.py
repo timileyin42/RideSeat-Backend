@@ -67,8 +67,13 @@ class TripService:
         destination_city: str | None,
         departure_date: date | None,
         passengers: int | None,
+        sort_by: str | None = None,
+        order: str | None = None,
     ) -> list[dict]:
-        trips = self.trip_repo.search(db, origin_city, destination_city, departure_date, passengers)
+        trips = self.trip_repo.search(
+            db, origin_city, destination_city, departure_date, passengers,
+            sort_by=sort_by, order=order,
+        )
         return [self._to_response(db, trip) for trip in trips]
 
     def list_all_trips(self, db: Session, actor: User, limit: int | None = None, offset: int | None = None) -> list[dict]:
@@ -81,13 +86,23 @@ class TripService:
     def _to_response(self, db: Session, trip: Trip) -> dict:
         confirmed_seats = self.trip_repo.count_confirmed_seats(db, trip.id)
         seats_remaining = max(trip.available_seats - confirmed_seats, 0)
+        pending_count = self.trip_repo.count_pending_bookings(db, trip.id)
         return {
             "id": trip.id,
             "driver": trip.driver,
             "driver_id": trip.driver_id,
+            "vehicle_id": trip.vehicle_id,
             "origin_city": trip.origin_city,
             "destination_city": trip.destination_city,
+            "origin_address": trip.origin_address,
+            "destination_address": trip.destination_address,
+            "origin_lat": trip.origin_lat,
+            "origin_lng": trip.origin_lng,
+            "destination_lat": trip.destination_lat,
+            "destination_lng": trip.destination_lng,
             "departure_time": trip.departure_time,
+            "estimated_duration_minutes": trip.estimated_duration_minutes,
+            "estimated_arrival_time": trip.estimated_arrival_time,
             "available_seats": trip.available_seats,
             "seats_remaining": seats_remaining,
             "price_per_seat": trip.price_per_seat,
@@ -95,7 +110,16 @@ class TripService:
             "vehicle_make": trip.vehicle_make,
             "vehicle_model": trip.vehicle_model,
             "vehicle_color": trip.vehicle_color,
+            "instant_booking": trip.instant_booking,
+            "music_allowed": trip.music_allowed,
+            "pets_allowed": trip.pets_allowed,
+            "smoking_allowed": trip.smoking_allowed,
+            "air_conditioning": trip.air_conditioning,
+            "minimal_luggage": trip.minimal_luggage,
             "luggage_allowed": trip.luggage_allowed,
+            "requires_passport": trip.requires_passport,
+            "stops": trip.stops,
             "notes": trip.notes,
             "is_cancelled": trip.is_cancelled,
+            "pending_booking_count": pending_count,
         }

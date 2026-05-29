@@ -12,6 +12,7 @@ from app.schemas.auth import (
     LoginRequest,
     RegisterRequest,
     RegisterResponse,
+    ResendOTPRequest,
     ResetPasswordRequest,
     VerifyEmailRequest,
 )
@@ -23,7 +24,7 @@ router = APIRouter()
 auth_service = AuthService(UserRepository(), EmailService())
 
 
-@router.post("/register", response_model=RegisterResponse)
+@router.post("/register", response_model=RegisterResponse, status_code=201)
 def register(
     payload: RegisterRequest,
     db: Session = Depends(get_db),
@@ -98,11 +99,24 @@ def google_mobile_auth(
 @router.post("/verify-email", response_model=AuthTokenResponse)
 def verify_email(payload: VerifyEmailRequest, db: Session = Depends(get_db)):
     try:
-        user, access_token, refresh_token = auth_service.verify_email(db, payload.token)
+        user, access_token, refresh_token = auth_service.verify_email(db, payload.email, payload.token)
         db.commit()
         return AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user)
     except ValueError as exc:
         db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/resend-otp")
+def resend_otp(
+    payload: ResendOTPRequest,
+    db: Session = Depends(get_db),
+    _=Depends(rate_limit("auth_resend_otp", limit=3, window_seconds=60)),
+):
+    try:
+        auth_service.resend_verify_otp(db, payload.email)
+        return {"status": "sent"}
+    except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
@@ -114,10 +128,8 @@ def forgot_password(
 ):
     try:
         auth_service.forgot_password(db, payload.email)
-        db.commit()
         return {"status": "sent"}
     except ValueError as exc:
-        db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
@@ -128,7 +140,7 @@ def reset_password(
     _=Depends(rate_limit("auth_reset_password", limit=5, window_seconds=60)),
 ):
     try:
-        auth_service.reset_password(db, payload.token, payload.new_password)
+        auth_service.reset_password(db, payload.email, payload.token, payload.new_password)
         db.commit()
         return {"status": "reset"}
     except ValueError as exc:

@@ -1,29 +1,42 @@
 """Trip routes."""
 
 from datetime import date
+from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from uuid import UUID
 
 from app.core.dependencies import get_current_user, get_db
 from app.repositories.trip_repo import TripRepository
+from app.repositories.vehicle_repo import VehicleRepository
 from app.schemas.trip import TripCreate, TripResponse, TripUpdate
 from app.services.trip_service import TripService
 
 router = APIRouter()
 trip_service = TripService(TripRepository())
+vehicle_repo = VehicleRepository()
 
 
-@router.post("", response_model=TripResponse)
+@router.post("", response_model=TripResponse, status_code=201)
 def create_trip(
     payload: TripCreate,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     try:
-        trip = trip_service.create_trip(db, current_user, payload.model_dump())
+        data = payload.model_dump()
+        if data.get("vehicle_id"):
+            vehicle = vehicle_repo.get_by_id(db, data["vehicle_id"])
+            if not vehicle or vehicle.user_id != current_user.id:
+                raise HTTPException(status_code=404, detail="Vehicle not found")
+            data["vehicle_make"] = vehicle.make
+            data["vehicle_model"] = vehicle.model
+            data["vehicle_color"] = vehicle.color
+        trip = trip_service.create_trip(db, current_user, data)
         db.commit()
         return trip
+    except HTTPException:
+        raise
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -35,9 +48,14 @@ def search_trips(
     destination_city: str | None = None,
     departure_date: date | None = None,
     passengers: int | None = Query(default=None, ge=1, le=6),
+    sort_by: Literal["departure_time", "price", "seats_remaining"] | None = None,
+    order: Literal["asc", "desc"] | None = None,
     db: Session = Depends(get_db),
 ):
-    return trip_service.search_trips(db, origin_city, destination_city, departure_date, passengers)
+    return trip_service.search_trips(
+        db, origin_city, destination_city, departure_date, passengers,
+        sort_by=sort_by, order=order,
+    )
 
 
 @router.get("/{trip_id}", response_model=TripResponse)
@@ -56,9 +74,19 @@ def update_trip(
     current_user=Depends(get_current_user),
 ):
     try:
-        trip = trip_service.update_trip(db, current_user, trip_id, payload.model_dump())
+        data = payload.model_dump()
+        if data.get("vehicle_id"):
+            vehicle = vehicle_repo.get_by_id(db, data["vehicle_id"])
+            if not vehicle or vehicle.user_id != current_user.id:
+                raise HTTPException(status_code=404, detail="Vehicle not found")
+            data["vehicle_make"] = vehicle.make
+            data["vehicle_model"] = vehicle.model
+            data["vehicle_color"] = vehicle.color
+        trip = trip_service.update_trip(db, current_user, trip_id, data)
         db.commit()
         return trip
+    except HTTPException:
+        raise
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc

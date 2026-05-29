@@ -48,4 +48,14 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-w", "4", "-b", "0.0.0.0:8000", "app.main:app"]
+
+# Default: run the API with gunicorn + 4 uvicorn workers.
+# docker-compose overrides this CMD for celery_worker and celery_beat services.
+CMD ["gunicorn", \
+     "--worker-class", "uvicorn.workers.UvicornWorker", \
+     "--workers", "4", \
+     "--bind", "0.0.0.0:8000", \
+     "--timeout", "120", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-", \
+     "app.main:app"]

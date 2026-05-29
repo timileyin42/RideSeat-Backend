@@ -1,6 +1,6 @@
 """User routes."""
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 from uuid import UUID
 
@@ -19,10 +19,14 @@ from app.schemas.user import (
     UserPublicResponse,
     UserUpdate,
 )
+from app.services.email_service import EmailService
 from app.services.user_service import UserService
+from app.services.vision_service import VisionService
 
 router = APIRouter()
 user_service = UserService(UserRepository(), BookingRepository())
+email_service = EmailService()
+vision_service = VisionService()
 
 
 @router.get("/me", response_model=UserPrivateResponse)
@@ -152,6 +156,58 @@ def get_public_profile(user_id: UUID, db: Session = Depends(get_db)):
         return user_service.get_user(db, user_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/me/verification/driver-licence", response_model=UserPrivateResponse)
+async def upload_driver_licence(
+    licence_number: str = Form(...),
+    photo: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    try:
+        content = await photo.read()
+        user = user_service.submit_driver_license(
+            db, current_user, licence_number, content, photo.content_type,
+            email_service, vision_service
+        )
+        db.commit()
+        return user
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/me/verification/selfie", response_model=UserPrivateResponse)
+async def upload_selfie(
+    selfie: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    try:
+        content = await selfie.read()
+        user = user_service.submit_selfie(db, current_user, content, selfie.content_type)
+        db.commit()
+        return user
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/me/verification/id-document", response_model=UserPrivateResponse)
+async def upload_id_document(
+    document: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    try:
+        content = await document.read()
+        user = user_service.submit_id_document(db, current_user, content, document.content_type)
+        db.commit()
+        return user
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/{user_id}/phone", response_model=PhoneNumberResponse)

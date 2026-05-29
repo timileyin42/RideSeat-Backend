@@ -49,6 +49,8 @@ class TripRepository:
         destination_city: str | None,
         departure_date: date | None,
         passengers: int | None,
+        sort_by: str | None = None,
+        order: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> list[Trip]:
@@ -68,12 +70,27 @@ class TripRepository:
             stmt = stmt.where(Trip.departure_time.between(start, end))
         if passengers:
             stmt = stmt.where(Trip.available_seats - confirmed_seats >= passengers)
-        stmt = stmt.order_by(Trip.departure_time).offset(offset).limit(limit)
+        descending = order == "desc"
+        if sort_by == "price":
+            col = Trip.price_per_seat.desc() if descending else Trip.price_per_seat.asc()
+        elif sort_by == "seats_remaining":
+            seats_expr = Trip.available_seats - confirmed_seats
+            col = seats_expr.desc() if descending else seats_expr.asc()
+        else:
+            col = Trip.departure_time.desc() if descending else Trip.departure_time.asc()
+        stmt = stmt.order_by(col).offset(offset).limit(limit)
         return list(db.execute(stmt).scalars().all())
 
     def count_confirmed_seats(self, db: Session, trip_id: UUID) -> int:
         stmt = select(func.coalesce(func.sum(Booking.seats), 0)).where(
             Booking.trip_id == trip_id,
             Booking.status == BookingStatus.CONFIRMED,
+        )
+        return int(db.execute(stmt).scalar_one())
+
+    def count_pending_bookings(self, db: Session, trip_id: UUID) -> int:
+        stmt = select(func.count(Booking.id)).where(
+            Booking.trip_id == trip_id,
+            Booking.status == BookingStatus.PENDING,
         )
         return int(db.execute(stmt).scalar_one())

@@ -69,5 +69,11 @@ class NotificationType(StrEnum):
     REVIEW_RECEIVED = "REVIEW_RECEIVED"
 
 
+class IdentityVerificationStatus(StrEnum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+
+
 PLATFORM_FEE_PERCENT = 0.1
 CURRENCY = "usd"

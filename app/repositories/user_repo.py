@@ -16,14 +16,6 @@ class UserRepository:
         stmt = select(User).where(User.email == email)
         return db.execute(stmt).scalar_one_or_none()
 
-    def get_by_verification_token(self, db: Session, token: str) -> User | None:
-        stmt = select(User).where(User.email_verification_token == token)
-        return db.execute(stmt).scalar_one_or_none()
-
-    def get_by_reset_token(self, db: Session, token: str) -> User | None:
-        stmt = select(User).where(User.password_reset_token == token)
-        return db.execute(stmt).scalar_one_or_none()
-
     def create(self, db: Session, user: User) -> User:
         db.add(user)
         db.flush()
@@ -36,6 +28,15 @@ class UserRepository:
     def count_users(self, db: Session) -> int:
         stmt = select(func.count(User.id))
         return int(db.execute(stmt).scalar_one())
+
+    def list_pending_verifications(self, db: Session) -> list[User]:
+        from app.core.constants import IdentityVerificationStatus
+        stmt = (
+            select(User)
+            .where(User.identity_verification_status == IdentityVerificationStatus.PENDING)
+            .order_by(User.updated_at.asc())
+        )
+        return list(db.execute(stmt).scalars().all())
 
     def update(self, db: Session, user: User) -> User:
         db.add(user)

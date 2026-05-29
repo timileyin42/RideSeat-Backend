@@ -31,7 +31,7 @@ booking_service = BookingService(
 )
 
 
-@router.post("", response_model=BookingResponse)
+@router.post("", response_model=BookingResponse, status_code=201)
 def create_booking(
     payload: BookingCreate,
     db: Session = Depends(get_db),

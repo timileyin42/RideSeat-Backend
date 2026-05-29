@@ -9,6 +9,9 @@ import os
 class Settings:
     app_name: str
     app_port: int
+    postgres_db: str
+    postgres_user: str
+    postgres_password: str
     database_url: str
     jwt_secret_key: str
     jwt_algorithm: str
@@ -29,6 +32,7 @@ class Settings:
     admin_password: str
     admin_first_name: str
     admin_last_name: str
+    redis_password: str
     celery_broker_url: str
     celery_result_backend: str
     spotify_playlist_url: str
@@ -37,6 +41,7 @@ class Settings:
     termii_api_key: str
     termii_sender_id: str
     termii_base_url: str
+    field_encryption_key: str
 
 
 @lru_cache
@@ -44,6 +49,9 @@ def get_settings() -> Settings:
     return Settings(
         app_name=os.getenv("APP_NAME", "RideSeat API"),
         app_port=int(os.getenv("APP_PORT", "8000")),
+        postgres_db=os.getenv("POSTGRES_DB", "rideseat_prod"),
+        postgres_user=os.getenv("POSTGRES_USER", "rideseat"),
+        postgres_password=os.getenv("POSTGRES_PASSWORD", ""),
         database_url=os.getenv("DATABASE_URL", ""),
         jwt_secret_key=os.getenv("JWT_SECRET_KEY", ""),
         jwt_algorithm=os.getenv("JWT_ALGORITHM", "HS256"),
@@ -64,6 +72,7 @@ def get_settings() -> Settings:
         admin_password=os.getenv("ADMIN_PASSWORD", ""),
         admin_first_name=os.getenv("ADMIN_FIRST_NAME", "Admin"),
         admin_last_name=os.getenv("ADMIN_LAST_NAME", "User"),
+        redis_password=os.getenv("REDIS_PASSWORD", ""),
         celery_broker_url=os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0"),
         celery_result_backend=os.getenv("CELERY_RESULT_BACKEND", "redis://redis:6379/1"),
         spotify_playlist_url=os.getenv("SPOTIFY_PLAYLIST_URL", ""),
@@ -72,4 +81,5 @@ def get_settings() -> Settings:
         termii_api_key=os.getenv("TERMII_API_KEY", ""),
         termii_sender_id=os.getenv("TERMII_SENDER_ID", ""),
         termii_base_url=os.getenv("TERMII_BASE_URL", "https://api.ng.termii.com"),
+        field_encryption_key=os.getenv("FIELD_ENCRYPTION_KEY", ""),
     )

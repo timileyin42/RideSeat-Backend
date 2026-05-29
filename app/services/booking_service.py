@@ -127,31 +127,50 @@ class BookingService:
         if seats > remaining:
             raise ValueError("Not enough seats available")
         total_amount = float(trip.price_per_seat) * seats
+        instant = getattr(trip, "instant_booking", False)
+        status = BookingStatus.CONFIRMED if instant else BookingStatus.PENDING
         booking = Booking(
             trip_id=trip.id,
             passenger_id=passenger.id,
             seats=seats,
-            status=BookingStatus.PENDING,
+            status=status,
             total_amount=total_amount,
         )
         created = self.booking_repo.create(db, booking)
         driver = self.user_repo.get_by_id(db, trip.driver_id)
-        if driver:
-            self.email_service.send_booking_request_email(
-                driver.email,
-                driver.first_name or "Driver",
-                passenger.first_name or "Passenger",
-                trip.origin_city,
-                trip.destination_city,
-                trip.departure_time.isoformat(),
-            )
+        if instant:
             self.notification_service.create_notification(
                 db,
-                driver.id,
+                passenger.id,
                 NotificationType.BOOKING_REQUEST,
-                "New booking request",
-                f"{passenger.first_name or 'Passenger'} requested a seat from {trip.origin_city} to {trip.destination_city}.",
+                "Booking confirmed",
+                f"Your seat from {trip.origin_city} to {trip.destination_city} is confirmed.",
             )
+            if driver:
+                self.notification_service.create_notification(
+                    db,
+                    driver.id,
+                    NotificationType.BOOKING_REQUEST,
+                    "New booking",
+                    f"{passenger.first_name or 'Passenger'} booked a seat from {trip.origin_city} to {trip.destination_city}.",
+                )
+        else:
+            if driver:
+                self.email_service.send_booking_request_email(
+                    driver.email,
+                    driver.first_name or "Driver",
+                    passenger.first_name or "Passenger",
+                    trip.origin_city,
+                    trip.destination_city,
+                    trip.departure_time.isoformat(),
+                )
+                self.notification_service.create_notification(
+                    db,
+                    driver.id,
+                    NotificationType.BOOKING_REQUEST,
+                    "New booking request",
+                    f"{passenger.first_name or 'Passenger'} requested a seat from {trip.origin_city} to {trip.destination_city}.",
+                )
         return created
 
     def list_bookings(self, db: Session, passenger: User) -> list[Booking]:

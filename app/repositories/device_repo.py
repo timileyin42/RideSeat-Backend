@@ -26,3 +26,7 @@ class DeviceRepository:
         db.add(device)
         db.flush()
         return device
+
+    def delete(self, db: Session, device: Device) -> None:
+        db.delete(device)
+        db.flush()

@@ -12,8 +12,8 @@ class MessageCreate(BaseModel):
 class MessageResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: str
-    booking_id: str
-    sender_id: str
+    id: UUID
+    booking_id: UUID
+    sender_id: UUID
     content: str
     created_at: datetime

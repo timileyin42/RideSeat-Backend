@@ -38,7 +38,12 @@ class AuthTokenResponse(BaseModel):
 
 
 class VerifyEmailRequest(BaseModel):
+    email: EmailStr
     token: str
+
+
+class ResendOTPRequest(BaseModel):
+    email: EmailStr
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -46,6 +51,7 @@ class ForgotPasswordRequest(BaseModel):
 
 
 class ResetPasswordRequest(BaseModel):
+    email: EmailStr
     token: str
     new_password: str = Field(min_length=8, max_length=128)
 

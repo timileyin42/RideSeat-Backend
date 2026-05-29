@@ -1,6 +1,5 @@
 """Authentication service."""
 
-from datetime import timedelta
 import secrets
 from urllib import parse
 from uuid import uuid4
@@ -14,7 +13,7 @@ from app.core.security import create_access_token, create_refresh_token, hash_pa
 from app.models.user import User
 from app.repositories.user_repo import UserRepository
 from app.services.email_service import EmailService
-from app.utils.datetime import ensure_utc, now_utc
+from app.services import otp_service
 
 
 class AuthService:
@@ -41,12 +40,11 @@ class AuthService:
             email=email,
             password_hash=hash_password(password),
             phone_number=phone_number,
-            email_verification_token=otp_code,
             is_email_verified=False,
-            email_verification_expires_at=now_utc() + timedelta(minutes=10),
         )
         saved = self.user_repo.create(db, user)
-        self.email_service.send_verification_email(saved.email, saved.first_name, saved.email_verification_token)
+        otp_service.save_verify_otp(email, otp_code)
+        self.email_service.send_verification_email(saved.email, saved.first_name, otp_code)
         return saved
 
     def login(self, db: Session, email: str, password: str) -> tuple[User, str, str]:
@@ -58,40 +56,49 @@ class AuthService:
         access_token, refresh_token = self._issue_tokens(user)
         return user, access_token, refresh_token
 
-    def verify_email(self, db: Session, token: str) -> tuple[User, str, str]:
-        user = self.user_repo.get_by_verification_token(db, token)
+    def verify_email(self, db: Session, email: str, token: str) -> tuple[User, str, str]:
+        stored = otp_service.get_verify_otp(email)
+        if not stored or stored != token:
+            raise ValueError("Invalid or expired verification code")
+        user = self.user_repo.get_by_email(db, email)
         if not user:
-            raise ValueError("Invalid verification token")
-        if not user.email_verification_expires_at or ensure_utc(user.email_verification_expires_at) < now_utc():
-            raise ValueError("Verification token expired")
+            raise ValueError("User not found")
         user.is_email_verified = True
-        user.email_verification_token = None
-        user.email_verification_expires_at = None
         updated = self.user_repo.update(db, user)
+        otp_service.delete_verify_otp(email)
         self.email_service.send_welcome_email(updated.email, updated.first_name)
         access_token, refresh_token = self._issue_tokens(updated)
         return updated, access_token, refresh_token
 
-    def forgot_password(self, db: Session, email: str) -> User:
+    def resend_verify_otp(self, db: Session, email: str) -> None:
+        user = self.user_repo.get_by_email(db, email)
+        if not user:
+            return  # silent — don't reveal whether email is registered
+        if user.is_email_verified:
+            raise ValueError("Email already verified")
+        otp_code = f"{secrets.randbelow(1000000):06d}"
+        otp_service.save_verify_otp(email, otp_code)
+        self.email_service.send_verification_email(user.email, user.first_name, otp_code)
+
+    def forgot_password(self, db: Session, email: str) -> None:
         user = self.user_repo.get_by_email(db, email)
         if not user:
             raise ValueError("User not found")
-        user.password_reset_token = str(uuid4())
-        user.password_reset_expires_at = now_utc() + timedelta(hours=2)
-        saved = self.user_repo.update(db, user)
-        self.email_service.send_password_reset_email(saved.email, saved.password_reset_token)
-        return saved
+        otp_code = f"{secrets.randbelow(1000000):06d}"
+        otp_service.save_reset_otp(email, otp_code)
+        self.email_service.send_password_reset_email(user.email, otp_code)
 
-    def reset_password(self, db: Session, token: str, new_password: str) -> User:
-        user = self.user_repo.get_by_reset_token(db, token)
+    def reset_password(self, db: Session, email: str, token: str, new_password: str) -> User:
+        stored = otp_service.get_reset_otp(email)
+        if not stored or stored != token:
+            raise ValueError("Invalid or expired reset code")
+        user = self.user_repo.get_by_email(db, email)
         if not user:
-            raise ValueError("Invalid reset token")
-        if not user.password_reset_expires_at or ensure_utc(user.password_reset_expires_at) < now_utc():
-            raise ValueError("Reset token expired")
+            raise ValueError("User not found")
         user.password_hash = hash_password(new_password)
-        user.password_reset_token = None
-        user.password_reset_expires_at = None
-        return self.user_repo.update(db, user)
+        updated = self.user_repo.update(db, user)
+        otp_service.delete_reset_otp(email)
+        return updated
 
     def google_auth(self, db: Session, id_token: str) -> tuple[User, str, str]:
         if not id_token:
@@ -110,14 +117,11 @@ class AuthService:
                 email=email,
                 password_hash=hash_password(str(uuid4())),
                 is_email_verified=True,
-                email_verification_token=None,
                 profile_photo_url=token_info.get("picture"),
             )
             user = self.user_repo.create(db, user)
         elif not user.is_email_verified:
             user.is_email_verified = True
-            user.email_verification_token = None
-            user.email_verification_expires_at = None
             user = self.user_repo.update(db, user)
         user = self._sync_google_profile(db, user, token_info)
         access_token, refresh_token = self._issue_tokens(user)
@@ -186,8 +190,6 @@ class AuthService:
             updated = True
         if not user.is_email_verified:
             user.is_email_verified = True
-            user.email_verification_token = None
-            user.email_verification_expires_at = None
             updated = True
         if updated:
             return self.user_repo.update(db, user)

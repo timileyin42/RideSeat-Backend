@@ -2,6 +2,7 @@
 
 from fastapi import FastAPI
 
+from app.api.admin_web import router as admin_web_router
 from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.database import SessionLocal
@@ -11,7 +12,15 @@ from app.repositories.user_repo import UserRepository
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="RideSeat API")
+    app = FastAPI(
+        title="Rideway API",
+        description=(
+            "**Authentication:** Click **Authorize** (top right), enter your email in the "
+            "`username` field and your password, then click **Authorize**. "
+            "All protected endpoints will use that token automatically."
+        ),
+        version="1.0.0",
+    )
     @app.get("/")
     def root():
         return {"message": "Welcome to RideSeat Backend", "docs": "/docs", "redoc": "/redoc"}
@@ -51,6 +60,7 @@ def create_app() -> FastAPI:
         finally:
             db.close()
     app.include_router(api_router)
+    app.include_router(admin_web_router, prefix="/admin")
     return app
 
 

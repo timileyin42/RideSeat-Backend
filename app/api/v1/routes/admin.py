@@ -109,3 +109,33 @@ def resolve_booking_dispute(
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+
+@router.post("/users/{user_id}/verification/approve", response_model=UserPrivateResponse)
+def approve_identity(
+    user_id: UUID,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    try:
+        user = user_service.approve_identity(db, current_user, user_id)
+        db.commit()
+        return user
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+
+@router.post("/users/{user_id}/verification/reject", response_model=UserPrivateResponse)
+def reject_identity(
+    user_id: UUID,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    try:
+        user = user_service.reject_identity(db, current_user, user_id)
+        db.commit()
+        return user
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=403, detail=str(exc)) from exc

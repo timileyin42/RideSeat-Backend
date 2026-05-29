@@ -5,9 +5,6 @@ from pathlib import Path
 import resend
 
 from app.core.config import get_settings
-from app.utils.email import build_reset_url, build_verify_url
-
-
 class EmailService:
     def __init__(self) -> None:
         self.settings = get_settings()
@@ -33,25 +30,16 @@ class EmailService:
         )
 
     def send_verification_email(self, email: str, first_name: str, token: str) -> None:
-        if not self.settings.frontend_base_url:
-            raise ValueError("Email configuration missing")
-        verify_url = build_verify_url(self.settings.frontend_base_url, token)
+        padded = token.ljust(6)
         html = self._render_template(
             "verify_email.html",
             {
                 "first_name": first_name,
-                "otp_code": token,
-                "verify_url": verify_url,
+                "d0": padded[0], "d1": padded[1], "d2": padded[2],
+                "d3": padded[3], "d4": padded[4], "d5": padded[5],
             },
         )
-        self._send(email, "Verify your email", html)
-
-    def send_password_reset_email(self, email: str, token: str) -> None:
-        if not self.settings.frontend_base_url:
-            raise ValueError("Email configuration missing")
-        reset_url = build_reset_url(self.settings.frontend_base_url, token)
-        html = self._render_template("reset_password.html", {"reset_url": reset_url})
-        self._send(email, "Reset your password", html)
+        self._send(email, "Verify your Rideway email", html)
 
     def send_welcome_email(self, email: str, first_name: str) -> None:
         html = self._render_template("welcome_email.html", {"first_name": first_name})
@@ -75,6 +63,38 @@ class EmailService:
             },
         )
         self._send(email, "Trip completed", html)
+
+    def send_password_reset_email(self, email: str, token: str) -> None:
+        padded = token.ljust(6)
+        html = self._render_template(
+            "reset_password.html",
+            {
+                "d0": padded[0], "d1": padded[1], "d2": padded[2],
+                "d3": padded[3], "d4": padded[4], "d5": padded[5],
+            },
+        )
+        self._send(email, "Reset your Rideway password", html)
+
+    def send_verification_submitted_email(self, email: str, first_name: str) -> None:
+        html = self._render_template("verification_submitted.html", {"first_name": first_name})
+        self._send(email, "We've received your documents — under review", html)
+
+    def send_admin_verification_alert(
+        self,
+        admin_email: str,
+        driver_name: str,
+        driver_email: str,
+        driver_id: str,
+    ) -> None:
+        html = self._render_template(
+            "admin_verification_alert.html",
+            {
+                "driver_name": driver_name,
+                "driver_email": driver_email,
+                "driver_id": driver_id,
+            },
+        )
+        self._send(admin_email, f"[Action required] Driver verification: {driver_name}", html)
 
     def send_booking_request_email(
         self,

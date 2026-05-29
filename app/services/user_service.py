@@ -8,8 +8,9 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.core.constants import UserRole
+from app.core.constants import IdentityVerificationStatus, UserRole
 from app.models.user import User
+from app.utils.uk_licence import validate_uk_licence
 from app.repositories.booking_repo import BookingRepository
 from app.repositories.user_repo import UserRepository
 from app.services.storage_service import StorageService
@@ -130,6 +131,103 @@ class UserService:
             if promo["promo_type"] == "STUDENT":
                 return promo
         raise ValueError("Student promo not available")
+
+    def submit_driver_license(
+        self,
+        db: Session,
+        user: User,
+        licence_number: str,
+        content: bytes,
+        content_type: str | None,
+        email_service=None,
+        vision_service=None,
+    ) -> User:
+        if not content_type or not content_type.startswith("image/"):
+            raise ValueError("Driver licence photo must be an image")
+        if len(content) > 10 * 1024 * 1024:
+            raise ValueError("File too large (max 10 MB)")
+        is_valid, reason = validate_uk_licence(
+            licence_number,
+            last_name=user.last_name or None,
+            date_of_birth=user.date_of_birth or None,
+        )
+        if not is_valid:
+            raise ValueError(f"Licence validation failed: {reason}")
+        if vision_service is not None:
+            try:
+                extracted = vision_service.extract_licence_number(content)
+                normalised = licence_number.replace(" ", "").upper()
+                if extracted and extracted != normalised:
+                    raise ValueError(
+                        f"Photo does not match submitted licence number "
+                        f"(detected {extracted}, submitted {normalised})"
+                    )
+            except ValueError:
+                raise
+            except Exception:
+                pass  # OCR unavailable — fall back to admin manual review
+        url = self.storage_service.upload_bytes(content, content_type, folder="driver_licences")
+        user.driver_license_url = url
+        user.driver_license_number = licence_number.replace(" ", "").upper()
+        user.identity_verification_status = IdentityVerificationStatus.PENDING
+        updated = self.user_repo.update(db, user)
+        if email_service:
+            settings = get_settings()
+            full_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
+            if settings.admin_email:
+                email_service.send_admin_verification_alert(
+                    admin_email=settings.admin_email,
+                    driver_name=full_name or "Unknown",
+                    driver_email=user.email,
+                    driver_id=str(user.id),
+                )
+            email_service.send_verification_submitted_email(
+                email=user.email,
+                first_name=user.first_name or "there",
+            )
+        return updated
+
+    def submit_selfie(self, db: Session, user: User, content: bytes, content_type: str | None) -> User:
+        if not content_type or not content_type.startswith("image/"):
+            raise ValueError("Selfie must be an image")
+        if len(content) > 10 * 1024 * 1024:
+            raise ValueError("Selfie file too large")
+        url = self.storage_service.upload_bytes(content, content_type, folder="selfies")
+        user.selfie_url = url
+        if user.identity_verification_status is None:
+            user.identity_verification_status = IdentityVerificationStatus.PENDING
+        return self.user_repo.update(db, user)
+
+    def submit_id_document(self, db: Session, user: User, content: bytes, content_type: str | None) -> User:
+        if not content_type or not content_type.startswith("image/"):
+            raise ValueError("ID document must be an image")
+        if len(content) > 10 * 1024 * 1024:
+            raise ValueError("ID document file too large")
+        url = self.storage_service.upload_bytes(content, content_type, folder="id_documents")
+        user.id_document_url = url
+        if user.identity_verification_status is None:
+            user.identity_verification_status = IdentityVerificationStatus.PENDING
+        return self.user_repo.update(db, user)
+
+    def approve_identity(self, db: Session, actor: User, user_id: UUID) -> User:
+        if not actor.is_admin:
+            raise ValueError("Admin privileges required")
+        user = self.user_repo.get_by_id(db, user_id)
+        if not user:
+            raise ValueError("User not found")
+        user.identity_verified = True
+        user.identity_verification_status = IdentityVerificationStatus.APPROVED
+        return self.user_repo.update(db, user)
+
+    def reject_identity(self, db: Session, actor: User, user_id: UUID) -> User:
+        if not actor.is_admin:
+            raise ValueError("Admin privileges required")
+        user = self.user_repo.get_by_id(db, user_id)
+        if not user:
+            raise ValueError("User not found")
+        user.identity_verified = False
+        user.identity_verification_status = IdentityVerificationStatus.REJECTED
+        return self.user_repo.update(db, user)
 
     def get_referral_url(self, user: User) -> str:
         settings = get_settings()

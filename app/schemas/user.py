@@ -3,12 +3,13 @@
 from datetime import datetime, date
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field
 
-from app.core.constants import ChatPreference, Gender, LuggageSize, SmokingPreference, UserRole
+from app.core.constants import ChatPreference, Gender, IdentityVerificationStatus, LuggageSize, SmokingPreference, UserRole
 
 
 class UserBase(BaseModel):
+    title: str | None = Field(default=None, max_length=20)
     first_name: str | None = Field(default=None, max_length=100)
     last_name: str | None = Field(default=None, max_length=100)
     profile_photo_url: str | None = Field(default=None, max_length=500)
@@ -53,6 +54,14 @@ class UserPublicResponse(UserBase):
     rating_avg: float
     rating_count: int
     trips_completed: int
+    is_email_verified: bool = False
+    is_phone_verified: bool = False
+    identity_verified: bool = False
+
+    @computed_field
+    @property
+    def is_verified(self) -> bool:
+        return self.is_email_verified and self.is_phone_verified and self.identity_verified
 
 
 class UserPrivateResponse(UserPublicResponse):
@@ -66,6 +75,11 @@ class UserPrivateResponse(UserPublicResponse):
     notify_email: bool
     notify_in_app: bool
     marketing_emails: bool
+    selfie_url: str | None = None
+    id_document_url: str | None = None
+    driver_license_url: str | None = None
+    driver_license_number: str | None = None
+    identity_verification_status: IdentityVerificationStatus | None = None
     created_at: datetime
 
 
