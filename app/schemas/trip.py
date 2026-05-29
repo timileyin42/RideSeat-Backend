@@ -1,6 +1,6 @@
 """Trip schemas."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -39,11 +39,21 @@ class TripCreate(BaseModel):
     notes: str | None = Field(default=None, max_length=500)
 
     @model_validator(mode="after")
-    def check_vehicle(self) -> "TripCreate":
+    def check_trip(self) -> "TripCreate":
+        # Vehicle: must provide ID or all three manual fields
         has_id = self.vehicle_id is not None
         has_manual = self.vehicle_make and self.vehicle_model and self.vehicle_color
         if not has_id and not has_manual:
             raise ValueError("Provide vehicle_id or all of vehicle_make, vehicle_model, vehicle_color")
+        # Departure must be in the future
+        dep = self.departure_time
+        if dep.tzinfo is None:
+            dep = dep.replace(tzinfo=timezone.utc)
+        if dep <= datetime.now(timezone.utc):
+            raise ValueError("Departure time must be in the future")
+        # Origin and destination must differ
+        if self.origin_city.strip().lower() == self.destination_city.strip().lower():
+            raise ValueError("Origin and destination cities cannot be the same")
         return self
 
 

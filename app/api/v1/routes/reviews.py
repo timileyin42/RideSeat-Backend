@@ -19,7 +19,7 @@ notification_service = NotificationService(DeviceRepository(), NotificationRepos
 review_service = ReviewService(ReviewRepository(), BookingRepository(), UserRepository(), notification_service)
 
 
-@router.post("", response_model=ReviewResponse)
+@router.post("", response_model=ReviewResponse, status_code=201)
 def create_review(
     payload: ReviewCreate,
     db: Session = Depends(get_db),

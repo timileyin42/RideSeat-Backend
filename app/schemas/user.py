@@ -84,7 +84,7 @@ class UserPrivateResponse(UserPublicResponse):
 
 
 class PhoneVerificationRequest(BaseModel):
-    code: str = Field(min_length=4, max_length=10)
+    code: str = Field(min_length=6, max_length=6)
 
 
 class PhoneVerificationResponse(BaseModel):

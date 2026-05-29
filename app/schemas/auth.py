@@ -21,7 +21,7 @@ class RegisterResponse(BaseModel):
 
 class LoginRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(min_length=1, max_length=128)
 
 
 class TokenResponse(BaseModel):
@@ -39,7 +39,7 @@ class AuthTokenResponse(BaseModel):
 
 class VerifyEmailRequest(BaseModel):
     email: EmailStr
-    token: str
+    token: str = Field(min_length=6, max_length=6)
 
 
 class ResendOTPRequest(BaseModel):
@@ -52,7 +52,7 @@ class ForgotPasswordRequest(BaseModel):
 
 class ResetPasswordRequest(BaseModel):
     email: EmailStr
-    token: str
+    token: str = Field(min_length=6, max_length=6)
     new_password: str = Field(min_length=8, max_length=128)
 
 

@@ -16,7 +16,7 @@ router = APIRouter()
 notification_service = NotificationService(DeviceRepository(), NotificationRepository(), UserRepository())
 
 
-@router.post("/devices/register", response_model=DeviceResponse)
+@router.post("/devices/register", response_model=DeviceResponse, status_code=201)
 def register_device(
     payload: DeviceRegistrationRequest,
     db: Session = Depends(get_db),

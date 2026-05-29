@@ -20,7 +20,7 @@ from app.utils.datetime import now_utc
 
 
 class CircuitBreaker:
-    def __init__(self, failure_threshold: int = 5, recovery_seconds: int = 30) -> None:
+    def __init__(self, failure_threshold: int = 5, recovery_seconds: int = 60) -> None:
         self.failure_threshold = failure_threshold
         self.recovery_seconds = recovery_seconds
         self.failure_count = 0
@@ -62,6 +62,8 @@ class PaymentService:
         self.user_repo = user_repo
 
     def create_intent_background(self, db: Session, booking_id: UUID, actor_id: UUID, background_tasks) -> Payment:
+        if not get_settings().stripe_secret_key:
+            raise ValueError("Payments are not yet enabled")
         booking = self.booking_repo.get_by_id(db, booking_id)
         if not booking:
             raise ValueError("Booking not found")
@@ -96,6 +98,8 @@ class PaymentService:
             if not payment_circuit_breaker.allow():
                 return
             settings = get_settings()
+            if not settings.stripe_secret_key:
+                return
             stripe.api_key = settings.stripe_secret_key
             intent = stripe.PaymentIntent.create(
                 amount=int(float(payment.amount) * 100),
@@ -185,6 +189,8 @@ class PaymentService:
         if not payment_circuit_breaker.allow():
             raise ValueError("Payment service unavailable")
         settings = get_settings()
+        if not settings.stripe_secret_key:
+            raise ValueError("Payments are not yet enabled")
         stripe.api_key = settings.stripe_secret_key
         try:
             transfer = stripe.Transfer.create(
@@ -204,6 +210,8 @@ class PaymentService:
 
     def handle_webhook(self, db: Session, payload: bytes, sig_header: str) -> Payment:
         settings = get_settings()
+        if not settings.stripe_webhook_secret:
+            raise ValueError("Payments are not yet enabled")
         event = stripe.Webhook.construct_event(payload, sig_header, settings.stripe_webhook_secret)
         data_object = event["data"]["object"]
         if data_object.get("metadata") and "booking_id" in data_object["metadata"]:
