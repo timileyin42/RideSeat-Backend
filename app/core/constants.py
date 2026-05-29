@@ -76,4 +76,4 @@ class IdentityVerificationStatus(StrEnum):
 
 
 PLATFORM_FEE_PERCENT = 0.1
-CURRENCY = "usd"
+CURRENCY = "gbp"
