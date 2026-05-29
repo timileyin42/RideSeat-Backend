@@ -54,9 +54,13 @@ def create_app() -> FastAPI:
                 is_admin=True,
                 is_email_verified=True,
             )
-            user_repo.create(db, admin_user)
-            db.commit()
-            print("Admin user created")
+            try:
+                user_repo.create(db, admin_user)
+                db.commit()
+                print("Admin user created")
+            except Exception:
+                # Another worker already inserted — safe to ignore
+                db.rollback()
         finally:
             db.close()
     app.include_router(api_router)
