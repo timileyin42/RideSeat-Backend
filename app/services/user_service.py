@@ -74,14 +74,41 @@ class UserService:
         pagination = normalize_pagination(limit, offset)
         return self.user_repo.list_users(db, limit=pagination.limit, offset=pagination.offset)
 
-    def request_phone_verification(self, db: Session, user: User) -> str:
+    def request_phone_verification(self, db: Session, user: User) -> None:
         if not user.phone_number:
             raise ValueError("Phone number required")
         token = f"{secrets.randbelow(1000000):06d}"
         user.phone_verification_token = token
         user.phone_verification_expires_at = now_utc() + timedelta(minutes=10)
         self.user_repo.update(db, user)
-        return token
+        self._send_phone_otp(user.phone_number, token)
+
+    def _send_phone_otp(self, phone_number: str, token: str) -> None:
+        import json
+        from urllib import request as http_request
+        settings = get_settings()
+        if not settings.termii_api_key or not settings.termii_sender_id:
+            return  # Termii not configured — skip silently
+        base_url = settings.termii_base_url.rstrip("/")
+        payload = {
+            "to": phone_number,
+            "from": settings.termii_sender_id,
+            "sms": f"Your Rideway verification code is {token}. Valid for 10 minutes.",
+            "type": "plain",
+            "channel": "generic",
+            "api_key": settings.termii_api_key,
+        }
+        data = json.dumps(payload).encode("utf-8")
+        req = http_request.Request(
+            f"{base_url}/api/sms/send",
+            data=data,
+            headers={"Content-Type": "application/json"},
+        )
+        try:
+            with http_request.urlopen(req, timeout=10):
+                pass
+        except Exception:
+            pass  # SMS failure is non-fatal — user can request resend
 
     def verify_phone(self, db: Session, user: User, code: str) -> User:
         if not user.phone_verification_token or user.phone_verification_token != code:

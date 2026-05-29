@@ -93,9 +93,9 @@ def request_phone_verification(
     current_user=Depends(get_current_user),
 ):
     try:
-        code = user_service.request_phone_verification(db, current_user)
+        user_service.request_phone_verification(db, current_user)
         db.commit()
-        return PhoneVerificationResponse(status="sent", code=code)
+        return PhoneVerificationResponse(status="sent")
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc

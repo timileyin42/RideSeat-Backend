@@ -89,7 +89,6 @@ class PhoneVerificationRequest(BaseModel):
 
 class PhoneVerificationResponse(BaseModel):
     status: str
-    code: str
 
 
 class PhoneNumberResponse(BaseModel):

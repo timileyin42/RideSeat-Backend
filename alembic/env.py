@@ -6,7 +6,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from app.core.database import Base
-from app.models import booking, message, payment, review, trip, user, vehicle
+from app.models import booking, device, message, notification, payment, review, trip, user, vehicle
 
 config = context.config
 

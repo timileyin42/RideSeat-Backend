@@ -314,7 +314,16 @@ class TestUsers:
         client.put("/api/v1/users/me", json={"phone_number": "+447911123456"}, headers=_auth(token))
         r = client.post("/api/v1/users/me/phone/request", headers=_auth(token))
         assert r.status_code == 200
-        code = r.json()["code"]
+        assert r.json() == {"status": "sent"}  # code is never returned — it goes via Termii SMS
+        # Get the code directly from DB (Termii is bypassed in tests)
+        db = _Session()
+        try:
+            user = db.execute(
+                select(User).where(User.email == "user@test.com")
+            ).scalar_one()
+            code = user.phone_verification_token
+        finally:
+            db.close()
         r2 = client.post("/api/v1/users/me/phone/verify", json={"code": code}, headers=_auth(token))
         assert r2.status_code == 200
         assert r2.json()["is_phone_verified"] is True
