@@ -4,7 +4,7 @@ import secrets
 from pathlib import Path
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
@@ -12,6 +12,7 @@ from fastapi.templating import Jinja2Templates
 from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.repositories.user_repo import UserRepository
+from app.services.email_service import EmailService
 from app.services.storage_service import StorageService
 from app.services.user_service import UserService
 from app.repositories.booking_repo import BookingRepository
@@ -88,7 +89,7 @@ def approve(user_id: UUID, _=Depends(_require_admin)):
         admin = _user_repo.get_by_email(db, get_settings().admin_email)
         if not admin:
             return RedirectResponse("/admin/?flash=ERR:Admin+user+not+found", status_code=303)
-        _user_service.approve_identity(db, admin, user_id)
+        _user_service.approve_identity(db, admin, user_id, email_service=EmailService())
         db.commit()
     except ValueError as exc:
         db.rollback()
@@ -99,13 +100,13 @@ def approve(user_id: UUID, _=Depends(_require_admin)):
 
 
 @router.post("/users/{user_id}/reject")
-def reject(user_id: UUID, _=Depends(_require_admin)):
+def reject(user_id: UUID, reason: str | None = Form(default=None), _=Depends(_require_admin)):
     db = SessionLocal()
     try:
         admin = _user_repo.get_by_email(db, get_settings().admin_email)
         if not admin:
             return RedirectResponse("/admin/?flash=ERR:Admin+user+not+found", status_code=303)
-        _user_service.reject_identity(db, admin, user_id)
+        _user_service.reject_identity(db, admin, user_id, reason=reason or None, email_service=EmailService())
         db.commit()
     except ValueError as exc:
         db.rollback()

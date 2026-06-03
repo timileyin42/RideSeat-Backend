@@ -12,7 +12,7 @@ from app.repositories.payment_repo import PaymentRepository
 from app.repositories.trip_repo import TripRepository
 from app.repositories.booking_repo import BookingRepository
 from app.repositories.user_repo import UserRepository
-from app.schemas.admin import AdminMetricsResponse
+from app.schemas.admin import AdminMetricsResponse, VerificationRejectRequest
 from app.schemas.booking import BookingDisputeResolve, BookingResponse
 from app.schemas.trip import TripResponse
 from app.schemas.user import UserPrivateResponse
@@ -118,7 +118,7 @@ def approve_identity(
     current_user=Depends(get_current_user),
 ):
     try:
-        user = user_service.approve_identity(db, current_user, user_id)
+        user = user_service.approve_identity(db, current_user, user_id, email_service=EmailService())
         db.commit()
         return user
     except ValueError as exc:
@@ -129,11 +129,13 @@ def approve_identity(
 @router.post("/users/{user_id}/verification/reject", response_model=UserPrivateResponse)
 def reject_identity(
     user_id: UUID,
+    payload: VerificationRejectRequest | None = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     try:
-        user = user_service.reject_identity(db, current_user, user_id)
+        reason = payload.reason if payload else None
+        user = user_service.reject_identity(db, current_user, user_id, reason=reason, email_service=EmailService())
         db.commit()
         return user
     except ValueError as exc:

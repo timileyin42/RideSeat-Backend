@@ -1,7 +1,12 @@
 """Admin schemas."""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from uuid import UUID
+
+
+class VerificationRejectRequest(BaseModel):
+    reason: str | None = Field(default=None, max_length=500)
+
 
 class AdminMetricsResponse(BaseModel):
     total_users: int

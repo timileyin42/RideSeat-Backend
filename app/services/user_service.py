@@ -236,7 +236,7 @@ class UserService:
             user.identity_verification_status = IdentityVerificationStatus.PENDING
         return self.user_repo.update(db, user)
 
-    def approve_identity(self, db: Session, actor: User, user_id: UUID) -> User:
+    def approve_identity(self, db: Session, actor: User, user_id: UUID, email_service=None) -> User:
         if not actor.is_admin:
             raise ValueError("Admin privileges required")
         user = self.user_repo.get_by_id(db, user_id)
@@ -244,9 +244,15 @@ class UserService:
             raise ValueError("User not found")
         user.identity_verified = True
         user.identity_verification_status = IdentityVerificationStatus.APPROVED
-        return self.user_repo.update(db, user)
+        updated = self.user_repo.update(db, user)
+        if email_service:
+            email_service.send_verification_approved_email(
+                email=user.email,
+                first_name=user.first_name or "there",
+            )
+        return updated
 
-    def reject_identity(self, db: Session, actor: User, user_id: UUID) -> User:
+    def reject_identity(self, db: Session, actor: User, user_id: UUID, reason: str | None = None, email_service=None) -> User:
         if not actor.is_admin:
             raise ValueError("Admin privileges required")
         user = self.user_repo.get_by_id(db, user_id)
@@ -254,7 +260,14 @@ class UserService:
             raise ValueError("User not found")
         user.identity_verified = False
         user.identity_verification_status = IdentityVerificationStatus.REJECTED
-        return self.user_repo.update(db, user)
+        updated = self.user_repo.update(db, user)
+        if email_service:
+            email_service.send_verification_rejected_email(
+                email=user.email,
+                first_name=user.first_name or "there",
+                reason=reason,
+            )
+        return updated
 
     def get_referral_url(self, user: User) -> str:
         settings = get_settings()

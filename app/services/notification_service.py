@@ -31,7 +31,7 @@ def _get_firebase_app(credentials_json: str):
     raw = base64.b64decode(credentials_json).decode("utf-8")
     info = json.loads(raw)
     cred = fb_creds.Certificate(info)
-    _firebase_app = firebase_admin.initialize_app(cred, name="rideway")
+    _firebase_app = firebase_admin.initialize_app(cred, name="Rideway")
     return _firebase_app
 
 
@@ -176,7 +176,7 @@ class NotificationService:
         try:
             from firebase_admin import messaging
 
-            _get_firebase_app(creds_json)
+            app = _get_firebase_app(creds_json)
 
             message = messaging.Message(
                 notification=messaging.Notification(title=title, body=body),
@@ -196,7 +196,7 @@ class NotificationService:
                     ),
                 ),
             )
-            messaging.send(message)
+            messaging.send(message, app=app)
             return True
 
         except Exception as exc:

@@ -43,7 +43,7 @@ class EmailService:
 
     def send_welcome_email(self, email: str, first_name: str) -> None:
         html = self._render_template("welcome_email.html", {"first_name": first_name})
-        self._send(email, "Welcome to RideSeat", html)
+        self._send(email, "Welcome to RideWay", html)
 
     def send_trip_completed_email(
         self,
@@ -78,6 +78,27 @@ class EmailService:
     def send_verification_submitted_email(self, email: str, first_name: str) -> None:
         html = self._render_template("verification_submitted.html", {"first_name": first_name})
         self._send(email, "We've received your documents — under review", html)
+
+    def send_verification_approved_email(self, email: str, first_name: str) -> None:
+        html = self._render_template("verification_approved.html", {"first_name": first_name})
+        self._send(email, "You're verified on Rideway 🎉", html)
+
+    def send_verification_rejected_email(self, email: str, first_name: str, reason: str | None = None) -> None:
+        if reason:
+            reason_block = (
+                f'<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 24px;">'
+                f'<tr><td style="background:#FEF2F2;border-radius:12px;padding:16px 20px;border-left:4px solid #EF4444;">'
+                f'<p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#991B1B;">Reason from our team</p>'
+                f'<p style="margin:0;font-size:13px;color:#7F1D1D;line-height:1.6;">{reason}</p>'
+                f'</td></tr></table>'
+            )
+        else:
+            reason_block = ""
+        html = self._render_template(
+            "verification_rejected.html",
+            {"first_name": first_name, "reason_block": reason_block},
+        )
+        self._send(email, "Rideway verification — action required", html)
 
     def send_admin_verification_alert(
         self,

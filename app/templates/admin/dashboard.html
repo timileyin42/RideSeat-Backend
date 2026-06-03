@@ -194,7 +194,10 @@
         <form method="post" action="/admin/users/{{ user.id }}/approve">
           <button class="btn btn-approve" type="submit">Approve</button>
         </form>
-        <form method="post" action="/admin/users/{{ user.id }}/reject">
+        <form method="post" action="/admin/users/{{ user.id }}/reject" style="flex:1;">
+          <textarea name="reason" placeholder="Reason for rejection (optional — sent to driver)" rows="2"
+            style="width:100%;padding:8px 12px;border:1px solid #E5E7EB;border-radius:8px;font-size:13px;
+                   color:#374151;resize:vertical;margin-bottom:8px;font-family:inherit;box-sizing:border-box;"></textarea>
           <button class="btn btn-reject" type="submit">Reject</button>
         </form>
       </div>
