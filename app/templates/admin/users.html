@@ -32,7 +32,9 @@
         </td>
         <td style="color:#6B7280;">{{ user.email }}</td>
         <td>
-          {% if user.role.value == 'BOTH' %}
+          {% if user.is_admin %}
+            <span class="badge" style="background:#EDE9FE;color:#4C1D95;">ADMIN</span>
+          {% elif user.role.value == 'BOTH' %}
             <span class="badge badge-both">BOTH</span>
           {% elif user.role.value == 'DRIVER' %}
             <span class="badge badge-driver">DRIVER</span>
