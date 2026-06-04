@@ -1,0 +1,77 @@
+{% extends "admin/base.html" %}
+{% block title %} — Users{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Users <span style="font-size:16px;font-weight:400;color:#9CA3AF;">({{ total }})</span></h1>
+
+<div class="table-card">
+  <div class="table-header">
+    <p class="table-title">All Users</p>
+    <input class="search-input" id="search" type="text" placeholder="Search name or email…" oninput="filterUsers()">
+  </div>
+
+  {% if users %}
+  <table id="users-table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Role</th>
+        <th>Joined</th>
+        <th>Email ✓</th>
+        <th>Phone ✓</th>
+        <th>Identity</th>
+      </tr>
+    </thead>
+    <tbody id="users-body">
+      {% for user in users %}
+      <tr data-search="{{ (user.first_name ~ ' ' ~ user.last_name ~ ' ' ~ user.email) | lower }}">
+        <td>
+          <strong>{{ user.first_name }} {{ user.last_name }}</strong>
+          {% if user.is_admin %}<span style="font-size:10px;font-weight:700;color:#7C3AED;margin-left:6px;">ADMIN</span>{% endif %}
+        </td>
+        <td style="color:#6B7280;">{{ user.email }}</td>
+        <td>
+          {% if user.role.value == 'BOTH' %}
+            <span class="badge badge-both">BOTH</span>
+          {% elif user.role.value == 'DRIVER' %}
+            <span class="badge badge-driver">DRIVER</span>
+          {% else %}
+            <span class="badge badge-passenger">PASSENGER</span>
+          {% endif %}
+        </td>
+        <td style="color:#6B7280;white-space:nowrap;">{{ user.created_at.strftime('%d %b %Y') }}</td>
+        <td>{% if user.is_email_verified %}<span class="check">✓</span>{% else %}<span class="cross">—</span>{% endif %}</td>
+        <td>{% if user.is_phone_verified %}<span class="check">✓</span>{% else %}<span class="cross">—</span>{% endif %}</td>
+        <td>
+          {% if user.identity_verification_status and user.identity_verification_status.value == 'APPROVED' %}
+            <span class="badge badge-approved">Verified</span>
+          {% elif user.identity_verification_status and user.identity_verification_status.value == 'PENDING' %}
+            <span class="badge badge-pending">Pending</span>
+          {% elif user.identity_verification_status and user.identity_verification_status.value == 'REJECTED' %}
+            <span class="badge badge-rejected">Rejected</span>
+          {% else %}
+            <span class="badge badge-none">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">
+    <p class="empty-title">No users yet</p>
+    <p class="empty-sub">Registered users will appear here.</p>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+function filterUsers() {
+  const q = document.getElementById('search').value.toLowerCase();
+  document.querySelectorAll('#users-body tr').forEach(row => {
+    row.style.display = row.dataset.search.includes(q) ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

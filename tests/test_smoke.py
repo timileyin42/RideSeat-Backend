@@ -641,29 +641,56 @@ class TestAdminAPI:
 # ══════════════════════════════════════════════════════════════════════════════
 
 class TestAdminDashboard:
-    def test_dashboard_requires_auth(self, client):
-        r = client.get("/admin/", auth=("wrong", "creds"))
-        assert r.status_code == 401
-
-    def test_dashboard_loads(self, client):
+    def _admin_cookie(self, client) -> dict:
+        """Log in via the login form and return a cookies dict."""
         _make_admin()
-        r = client.get("/admin/", auth=("admin@test.com", "AdminPass1!"))
+        r = client.post("/admin/login",
+                        data={"email": "admin@test.com", "password": "AdminPass1!"},
+                        follow_redirects=False)
+        assert r.status_code == 303, r.text
+        return dict(client.cookies)
+
+    def test_dashboard_requires_auth(self, client):
+        # Without a session cookie, redirect to /admin/login
+        r = client.get("/admin/", follow_redirects=False)
+        assert r.status_code == 303
+        assert "/admin/login" in r.headers["location"]
+
+    def test_login_page_loads(self, client):
+        r = client.get("/admin/login")
         assert r.status_code == 200
         assert b"Rideway" in r.content
-        assert b"Verification Queue" in r.content
+
+    def test_dashboard_loads(self, client):
+        cookies = self._admin_cookie(client)
+        r = client.get("/admin/", cookies=cookies)
+        assert r.status_code == 200
+        assert b"Rideway" in r.content
+
+    def test_verification_page_loads(self, client):
+        cookies = self._admin_cookie(client)
+        r = client.get("/admin/verification", cookies=cookies)
+        assert r.status_code == 200
+        assert b"Verification" in r.content
+
+    def test_users_page_loads(self, client):
+        cookies = self._admin_cookie(client)
+        r = client.get("/admin/users", cookies=cookies)
+        assert r.status_code == 200
 
     def test_approve_unknown_user(self, client):
-        _make_admin()
+        cookies = self._admin_cookie(client)
         import uuid
         r = client.post(f"/admin/users/{uuid.uuid4()}/approve",
-                        auth=("admin@test.com", "AdminPass1!"))
+                        cookies=cookies, follow_redirects=False)
         assert r.status_code in (200, 303)
 
     def test_reject_unknown_user(self, client):
-        _make_admin()
+        cookies = self._admin_cookie(client)
         import uuid
         r = client.post(f"/admin/users/{uuid.uuid4()}/reject",
-                        auth=("admin@test.com", "AdminPass1!"))
+                        data={"reason": "Documents unclear"},
+                        cookies=cookies, follow_redirects=False)
         assert r.status_code in (200, 303)
 
 

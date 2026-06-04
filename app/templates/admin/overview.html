@@ -1,0 +1,87 @@
+{% extends "admin/base.html" %}
+{% block title %} — Overview{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Overview</h1>
+
+<!-- METRIC CARDS -->
+<div class="stats">
+  <div class="stat-card">
+    <p class="stat-label">Total Users</p>
+    <p class="stat-value purple">{{ metrics.total_users }}</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-label">Total Trips</p>
+    <p class="stat-value">{{ metrics.total_trips }}</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-label">Confirmed Bookings</p>
+    <p class="stat-value">{{ metrics.confirmed_bookings }}</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-label">Total Revenue</p>
+    <p class="stat-value green">£{{ "%.2f"|format(metrics.total_revenue) }}</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-label">Platform Fees</p>
+    <p class="stat-value purple">£{{ "%.2f"|format(metrics.platform_fee_total) }}</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-label">Trips (last 7 days)</p>
+    <p class="stat-value">{{ metrics.trips_created_last_7_days }}</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-label">Conversion Rate</p>
+    <p class="stat-value">{{ "%.0f"|format(metrics.booking_conversion_rate * 100) }}%</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-label">Pending Verifications</p>
+    <p class="stat-value amber">{{ pending_count }}</p>
+  </div>
+</div>
+
+<!-- RECENT SIGN-UPS -->
+<div class="table-card">
+  <div class="table-header">
+    <p class="table-title">Recent Sign-ups</p>
+    <a href="/admin/users" style="font-size:13px;color:#7C3AED;text-decoration:none;font-weight:600;">View all →</a>
+  </div>
+  {% if recent_users %}
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Role</th>
+        <th>Joined</th>
+        <th>Email ✓</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in recent_users %}
+      <tr>
+        <td><strong>{{ user.first_name }} {{ user.last_name }}</strong></td>
+        <td style="color:#6B7280;">{{ user.email }}</td>
+        <td>
+          {% if user.role.value == 'BOTH' %}
+            <span class="badge badge-both">BOTH</span>
+          {% elif user.role.value == 'DRIVER' %}
+            <span class="badge badge-driver">DRIVER</span>
+          {% else %}
+            <span class="badge badge-passenger">PASSENGER</span>
+          {% endif %}
+        </td>
+        <td style="color:#6B7280;white-space:nowrap;">{{ user.created_at.strftime('%d %b %Y') }}</td>
+        <td>{% if user.is_email_verified %}<span class="check">✓</span>{% else %}<span class="cross">—</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">
+    <p class="empty-title">No users yet</p>
+    <p class="empty-sub">Sign-ups will appear here.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
