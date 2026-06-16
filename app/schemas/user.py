@@ -99,6 +99,18 @@ class UserPrivateResponse(UserPublicResponse):
     created_at: datetime
 
 
+class OnboardingRequest(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "first_name": "James",
+            "last_name": "Harrison",
+        }
+    })
+
+    first_name: str = Field(min_length=1, max_length=100)
+    last_name: str = Field(min_length=1, max_length=100)
+
+
 class PhoneVerificationRequest(BaseModel):
     model_config = ConfigDict(json_schema_extra={
         "example": {"code": "583017"}

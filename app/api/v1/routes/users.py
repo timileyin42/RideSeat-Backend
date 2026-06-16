@@ -8,6 +8,7 @@ from app.core.dependencies import get_current_user, get_db
 from app.repositories.booking_repo import BookingRepository
 from app.repositories.user_repo import UserRepository
 from app.schemas.user import (
+    OnboardingRequest,
     PhoneNumberResponse,
     PhoneVerificationRequest,
     PhoneVerificationResponse,
@@ -46,6 +47,22 @@ def update_me(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    try:
+        user = user_service.update_user(db, current_user, payload.model_dump())
+        db.commit()
+        return user
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/me/onboarding", response_model=UserPrivateResponse)
+def complete_onboarding(
+    payload: OnboardingRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Set name after email verification. Called once during the onboarding flow."""
     try:
         user = user_service.update_user(db, current_user, payload.model_dump())
         db.commit()
