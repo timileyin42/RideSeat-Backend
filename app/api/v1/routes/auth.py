@@ -46,7 +46,31 @@ def register(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.post("/login", response_model=AuthTokenResponse)
+@router.post(
+    "/login",
+    response_model=AuthTokenResponse,
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "required": ["email", "password"],
+                        "properties": {
+                            "email": {"type": "string", "format": "email"},
+                            "password": {"type": "string"},
+                        },
+                    },
+                    "example": {
+                        "email": "james.harrison@example.com",
+                        "password": "SecurePass1!",
+                    },
+                }
+            },
+        }
+    },
+)
 async def login(
     request: Request,
     db: Session = Depends(get_db),
