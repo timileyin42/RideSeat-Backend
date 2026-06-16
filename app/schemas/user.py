@@ -36,6 +36,22 @@ class UserBase(BaseModel):
 
 
 class UserUpdate(UserBase):
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "first_name": "James",
+            "last_name": "Harrison",
+            "bio": "Friendly driver, love long road trips.",
+            "gender": "MALE",
+            "date_of_birth": "1992-06-15",
+            "phone_number": "+447911123456",
+            "role": "DRIVER",
+            "smoking_preference": "NO_SMOKING",
+            "chat_preference": "CHATTY",
+            "notify_push": True,
+            "notify_email": True,
+        }
+    })
+
     role: UserRole | None = None
     payment_details: str | None = Field(default=None, max_length=255)
     phone_number: str | None = Field(default=None, max_length=30)
@@ -84,6 +100,10 @@ class UserPrivateResponse(UserPublicResponse):
 
 
 class PhoneVerificationRequest(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "example": {"code": "583017"}
+    })
+
     code: str = Field(min_length=6, max_length=6)
 
 

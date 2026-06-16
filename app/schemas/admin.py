@@ -1,10 +1,16 @@
 """Admin schemas."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from uuid import UUID
 
 
 class VerificationRejectRequest(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "reason": "The licence image is blurry. Please resubmit a clear, well-lit photo.",
+        }
+    })
+
     reason: str | None = Field(default=None, max_length=500)
 
 

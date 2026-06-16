@@ -7,6 +7,19 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class VehicleCreate(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "make": "Toyota",
+            "model": "Prius",
+            "type": "Saloon",
+            "color": "Silver",
+            "year": 2021,
+            "plate": "AB21 CDE",
+            "back_seat_max": 3,
+            "is_default": True,
+        }
+    })
+
     make: str = Field(min_length=1, max_length=100)
     model: str = Field(min_length=1, max_length=100)
     type: str | None = Field(default=None, max_length=100)
@@ -18,6 +31,14 @@ class VehicleCreate(BaseModel):
 
 
 class VehicleUpdate(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "color": "Black",
+            "year": 2022,
+            "is_default": True,
+        }
+    })
+
     make: str | None = Field(default=None, min_length=1, max_length=100)
     model: str | None = Field(default=None, min_length=1, max_length=100)
     type: str | None = Field(default=None, max_length=100)

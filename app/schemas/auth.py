@@ -1,11 +1,21 @@
 """Authentication schemas."""
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.schemas.user import UserPrivateResponse
 
 
 class RegisterRequest(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "first_name": "James",
+            "last_name": "Harrison",
+            "email": "james.harrison@example.com",
+            "password": "SecurePass1!",
+            "phone_number": "+447911123456",
+        }
+    })
+
     first_name: str = Field(min_length=1, max_length=100)
     last_name: str = Field(min_length=1, max_length=100)
     email: EmailStr
@@ -20,6 +30,13 @@ class RegisterResponse(BaseModel):
 
 
 class LoginRequest(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "email": "james.harrison@example.com",
+            "password": "SecurePass1!",
+        }
+    })
+
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)
 
@@ -38,27 +55,58 @@ class AuthTokenResponse(BaseModel):
 
 
 class VerifyEmailRequest(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "email": "james.harrison@example.com",
+            "token": "483921",
+        }
+    })
+
     email: EmailStr
     token: str = Field(min_length=6, max_length=6)
 
 
 class ResendOTPRequest(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "example": {"email": "james.harrison@example.com"}
+    })
+
     email: EmailStr
 
 
 class ForgotPasswordRequest(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "example": {"email": "james.harrison@example.com"}
+    })
+
     email: EmailStr
 
 
 class ResetPasswordRequest(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "email": "james.harrison@example.com",
+            "token": "739204",
+            "new_password": "NewSecurePass2!",
+        }
+    })
+
     email: EmailStr
     token: str = Field(min_length=6, max_length=6)
     new_password: str = Field(min_length=8, max_length=128)
 
 
 class GoogleAuthRequest(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "example": {"id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjFlOWdkay4uLiJ9..."}
+    })
+
     id_token: str
 
 
 class GoogleMobileAuthRequest(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "example": {"id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjFlOWdkay4uLiJ9..."}
+    })
+
     id_token: str

@@ -8,6 +8,10 @@ from app.core.constants import PaymentStatus
 
 
 class PaymentIntentCreate(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "example": {"booking_id": "c3d4e5f6-a7b8-9012-cdef-123456789012"}
+    })
+
     booking_id: str
 
 

@@ -9,6 +9,34 @@ from app.schemas.user import UserPublicResponse
 
 
 class TripCreate(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "origin_city": "Manchester",
+            "destination_city": "London",
+            "origin_address": "Piccadilly Gardens, Manchester",
+            "destination_address": "Victoria Coach Station, London",
+            "origin_lat": 53.4808,
+            "origin_lng": -2.2426,
+            "destination_lat": 51.4934,
+            "destination_lng": -0.1441,
+            "departure_time": "2026-07-15T08:00:00Z",
+            "estimated_duration_minutes": 210,
+            "available_seats": 3,
+            "price_per_seat": 25.00,
+            "toll_fee": 0.00,
+            "vehicle_make": "Toyota",
+            "vehicle_model": "Prius",
+            "vehicle_color": "Silver",
+            "instant_booking": False,
+            "music_allowed": True,
+            "pets_allowed": False,
+            "smoking_allowed": False,
+            "air_conditioning": True,
+            "luggage_allowed": True,
+            "notes": "Happy to stop at services on the M6.",
+        }
+    })
+
     origin_city: str = Field(min_length=1, max_length=120)
     destination_city: str = Field(min_length=1, max_length=120)
     origin_address: str | None = Field(default=None, max_length=255)
@@ -58,6 +86,15 @@ class TripCreate(BaseModel):
 
 
 class TripUpdate(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "price_per_seat": 28.00,
+            "available_seats": 2,
+            "notes": "Updated: stopping at Stafford services.",
+            "music_allowed": False,
+        }
+    })
+
     origin_city: str | None = Field(default=None, min_length=1, max_length=120)
     destination_city: str | None = Field(default=None, min_length=1, max_length=120)
     origin_address: str | None = Field(default=None, max_length=255)

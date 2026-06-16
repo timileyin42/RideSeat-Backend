@@ -6,6 +6,10 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class MessageCreate(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "example": {"content": "Hi, are you still picking up from Piccadilly Gardens?"}
+    })
+
     content: str = Field(min_length=1, max_length=2000)
 
     @field_validator("content")
