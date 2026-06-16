@@ -119,11 +119,10 @@ def reset_db():
 
 
 # ── helpers ────────────────────────────────────────────────────────────────────
-def _register(client, email="user@test.com", password="Pass1234!", first="Test", last="User"):
+def _register(client, email="user@test.com", password="Pass1234!", first=None, last=None):
     """Register and auto-verify so the user can log in immediately."""
     r = client.post("/api/v1/auth/register", json={
         "email": email, "password": password,
-        "first_name": first, "last_name": last,
     })
     assert r.status_code == 201, r.text
     data = r.json()
@@ -194,7 +193,6 @@ class TestAuth:
     def test_register(self, client):
         r = client.post("/api/v1/auth/register", json={
             "email": "new@test.com", "password": "Pass1234!",
-            "first_name": "Jane", "last_name": "Doe",
         })
         assert r.status_code == 201
         data = r.json()
@@ -205,7 +203,6 @@ class TestAuth:
         _register(client)
         r = client.post("/api/v1/auth/register", json={
             "email": "user@test.com", "password": "Pass1234!",
-            "first_name": "X", "last_name": "Y",
         })
         assert r.status_code == 400
 
@@ -227,7 +224,6 @@ class TestAuth:
     def test_login_unverified_fails(self, client):
         client.post("/api/v1/auth/register", json={
             "email": "noverify@test.com", "password": "Pass1234!",
-            "first_name": "No", "last_name": "Verify",
         })
         r = client.post("/api/v1/auth/login", json={
             "email": "noverify@test.com", "password": "Pass1234!",
@@ -238,7 +234,6 @@ class TestAuth:
         """Register without auto-verify, fetch OTP from fake Redis, verify with email+token."""
         r = client.post("/api/v1/auth/register", json={
             "email": "unverified@test.com", "password": "Pass1234!",
-            "first_name": "Un", "last_name": "Verified",
         })
         assert r.status_code == 201
         otp = otp_service.get_verify_otp("unverified@test.com")

@@ -24,27 +24,21 @@ class AuthService:
     def register(
         self,
         db: Session,
-        first_name: str,
-        last_name: str,
         email: str,
         password: str,
-        phone_number: str | None,
     ) -> User:
         existing = self.user_repo.get_by_email(db, email)
         if existing:
             raise ValueError("Email already registered")
         otp_code = f"{secrets.randbelow(1000000):06d}"
         user = User(
-            first_name=first_name,
-            last_name=last_name,
             email=email,
             password_hash=hash_password(password),
-            phone_number=phone_number,
             is_email_verified=False,
         )
         saved = self.user_repo.create(db, user)
         otp_service.save_verify_otp(email, otp_code)
-        self.email_service.send_verification_email(saved.email, saved.first_name, otp_code)
+        self.email_service.send_verification_email(saved.email, saved.first_name or "there", otp_code)
         return saved
 
     def login(self, db: Session, email: str, password: str) -> tuple[User, str, str]:
@@ -66,7 +60,7 @@ class AuthService:
         user.is_email_verified = True
         updated = self.user_repo.update(db, user)
         otp_service.delete_verify_otp(email)
-        self.email_service.send_welcome_email(updated.email, updated.first_name)
+        self.email_service.send_welcome_email(updated.email, updated.first_name or "there")
         access_token, refresh_token = self._issue_tokens(updated)
         return updated, access_token, refresh_token
 
@@ -78,7 +72,7 @@ class AuthService:
             raise ValueError("Email already verified")
         otp_code = f"{secrets.randbelow(1000000):06d}"
         otp_service.save_verify_otp(email, otp_code)
-        self.email_service.send_verification_email(user.email, user.first_name, otp_code)
+        self.email_service.send_verification_email(user.email, user.first_name or "there", otp_code)
 
     def forgot_password(self, db: Session, email: str) -> None:
         user = self.user_repo.get_by_email(db, email)

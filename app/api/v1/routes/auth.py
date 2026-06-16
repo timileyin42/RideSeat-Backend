@@ -33,11 +33,8 @@ def register(
     try:
         user = auth_service.register(
             db,
-            first_name=payload.first_name,
-            last_name=payload.last_name,
             email=payload.email,
             password=payload.password,
-            phone_number=payload.phone_number,
         )
         db.commit()
         return RegisterResponse(user_id=str(user.id), email=user.email, is_email_verified=user.is_email_verified)

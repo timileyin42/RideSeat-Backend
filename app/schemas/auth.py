@@ -8,19 +8,13 @@ from app.schemas.user import UserPrivateResponse
 class RegisterRequest(BaseModel):
     model_config = ConfigDict(json_schema_extra={
         "example": {
-            "first_name": "James",
-            "last_name": "Harrison",
             "email": "james.harrison@example.com",
             "password": "SecurePass1!",
-            "phone_number": "+447911123456",
         }
     })
 
-    first_name: str = Field(min_length=1, max_length=100)
-    last_name: str = Field(min_length=1, max_length=100)
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
-    phone_number: str | None = Field(default=None, max_length=30)
 
 
 class RegisterResponse(BaseModel):
