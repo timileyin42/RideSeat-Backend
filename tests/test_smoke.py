@@ -196,8 +196,10 @@ class TestAuth:
         })
         assert r.status_code == 201
         data = r.json()
-        assert data["email"] == "new@test.com"
-        assert "user_id" in data
+        assert "access_token" in data
+        assert "refresh_token" in data
+        assert data["user"]["email"] == "new@test.com"
+        assert data["user"]["is_email_verified"] is False
 
     def test_register_duplicate_email(self, client):
         _register(client)
@@ -278,7 +280,7 @@ class TestUsers:
 
     def test_get_public_profile(self, client):
         data = _register(client)
-        user_id = data["user_id"]
+        user_id = data["user"]["id"]
         token = _login(client)
         r = client.get(f"/api/v1/users/{user_id}", headers=_auth(token))
         assert r.status_code == 200
@@ -309,7 +311,8 @@ class TestUsers:
         client.put("/api/v1/users/me", json={"phone_number": "+447911123456"}, headers=_auth(token))
         r = client.post("/api/v1/users/me/phone/request", headers=_auth(token))
         assert r.status_code == 200
-        assert r.json() == {"status": "sent"}  # code is never returned — it goes via Termii SMS
+        assert r.json()["status"] == "sent"
+        assert r.json()["channel"] in ("sms", "whatsapp", "voice")
         # Get the code directly from DB (Termii is bypassed in tests)
         db = _Session()
         try:
@@ -545,7 +548,7 @@ class TestMessages:
 class TestReviews:
     def test_list_reviews_for_user(self, client):
         data = _register(client)
-        user_id = data["user_id"]
+        user_id = data["user"]["id"]
         token = _login(client)
         r = client.get(f"/api/v1/reviews/user/{user_id}", headers=_auth(token))
         assert r.status_code == 200

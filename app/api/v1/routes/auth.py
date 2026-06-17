@@ -11,7 +11,6 @@ from app.schemas.auth import (
     GoogleMobileAuthRequest,
     LoginRequest,
     RegisterRequest,
-    RegisterResponse,
     ResendOTPRequest,
     ResetPasswordRequest,
     VerifyEmailRequest,
@@ -24,20 +23,20 @@ router = APIRouter()
 auth_service = AuthService(UserRepository(), EmailService())
 
 
-@router.post("/register", response_model=RegisterResponse, status_code=201)
+@router.post("/register", response_model=AuthTokenResponse, status_code=201)
 def register(
     payload: RegisterRequest,
     db: Session = Depends(get_db),
     _=Depends(rate_limit("auth_register", limit=5, window_seconds=60)),
 ):
     try:
-        user = auth_service.register(
+        user, access_token, refresh_token = auth_service.register(
             db,
             email=payload.email,
             password=payload.password,
         )
         db.commit()
-        return RegisterResponse(user_id=str(user.id), email=user.email, is_email_verified=user.is_email_verified)
+        return AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc

@@ -26,7 +26,7 @@ class AuthService:
         db: Session,
         email: str,
         password: str,
-    ) -> User:
+    ) -> tuple[User, str, str]:
         existing = self.user_repo.get_by_email(db, email)
         if existing:
             raise ValueError("Email already registered")
@@ -39,7 +39,8 @@ class AuthService:
         saved = self.user_repo.create(db, user)
         otp_service.save_verify_otp(email, otp_code)
         self.email_service.send_verification_email(saved.email, saved.first_name or "there", otp_code)
-        return saved
+        access_token, refresh_token = self._issue_tokens(saved)
+        return saved, access_token, refresh_token
 
     def login(self, db: Session, email: str, password: str) -> tuple[User, str, str]:
         user = self.user_repo.get_by_email(db, email)

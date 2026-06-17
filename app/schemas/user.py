@@ -121,6 +121,7 @@ class PhoneVerificationRequest(BaseModel):
 
 class PhoneVerificationResponse(BaseModel):
     status: str
+    channel: str  # "sms" | "whatsapp" | "voice" — tells the app which message to show
 
 
 class PhoneNumberResponse(BaseModel):
