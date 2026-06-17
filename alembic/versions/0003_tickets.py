@@ -18,9 +18,21 @@ TICKET_STATUS = ("OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED")
 
 
 def upgrade() -> None:
-    # IF NOT EXISTS makes this idempotent — safe even if a prior failed run created the types
-    op.execute("CREATE TYPE IF NOT EXISTS ticketcategory AS ENUM ('HARASSMENT', 'FRAUD', 'SAFETY', 'MISCONDUCT', 'NO_SHOW', 'PROPERTY_DAMAGE', 'OTHER')")
-    op.execute("CREATE TYPE IF NOT EXISTS ticketstatus AS ENUM ('OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED')")
+    # DO block swallows duplicate_object — idempotent even if a prior failed run created the types
+    op.execute("""
+        DO $$ BEGIN
+            CREATE TYPE ticketcategory AS ENUM (
+                'HARASSMENT','FRAUD','SAFETY','MISCONDUCT','NO_SHOW','PROPERTY_DAMAGE','OTHER'
+            );
+        EXCEPTION WHEN duplicate_object THEN NULL;
+        END $$;
+    """)
+    op.execute("""
+        DO $$ BEGIN
+            CREATE TYPE ticketstatus AS ENUM ('OPEN','IN_PROGRESS','RESOLVED','CLOSED');
+        EXCEPTION WHEN duplicate_object THEN NULL;
+        END $$;
+    """)
 
     op.create_table(
         "tickets",
