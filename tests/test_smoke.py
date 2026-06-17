@@ -696,6 +696,97 @@ class TestAdminDashboard:
 # 13. AUTH GUARDS — unauthenticated access returns 401
 # ══════════════════════════════════════════════════════════════════════════════
 
+# ══════════════════════════════════════════════════════════════════════════════
+# TICKETS
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestTickets:
+    def test_raise_ticket(self, client):
+        _register(client)
+        token = _login(client)
+        r = client.post("/api/v1/tickets", headers=_auth(token), json={
+            "category": "MISCONDUCT",
+            "subject": "Driver was rude",
+            "description": "The driver used abusive language during the trip.",
+        })
+        assert r.status_code == 201
+        data = r.json()
+        assert data["category"] == "MISCONDUCT"
+        assert data["status"] == "OPEN"
+        assert data["admin_note"] is None
+
+    def test_my_tickets(self, client):
+        _register(client)
+        token = _login(client)
+        client.post("/api/v1/tickets", headers=_auth(token), json={
+            "category": "FRAUD",
+            "subject": "Overcharged for the trip",
+            "description": "Driver charged more than the agreed price.",
+        })
+        r = client.get("/api/v1/tickets/me", headers=_auth(token))
+        assert r.status_code == 200
+        assert len(r.json()) >= 1
+
+    def test_get_ticket(self, client):
+        _register(client)
+        token = _login(client)
+        c = client.post("/api/v1/tickets", headers=_auth(token), json={
+            "category": "SAFETY",
+            "subject": "Driver was speeding",
+            "description": "The driver was doing 100mph on a 70mph road.",
+        })
+        ticket_id = c.json()["id"]
+        r = client.get(f"/api/v1/tickets/{ticket_id}", headers=_auth(token))
+        assert r.status_code == 200
+        assert r.json()["id"] == ticket_id
+
+    def test_cannot_get_other_users_ticket(self, client):
+        _register(client)
+        token = _login(client)
+        c = client.post("/api/v1/tickets", headers=_auth(token), json={
+            "category": "OTHER",
+            "subject": "Test ticket",
+            "description": "This ticket belongs to user A.",
+        })
+        ticket_id = c.json()["id"]
+        _register(client, email="other@test.com")
+        other_token = _login(client, email="other@test.com")
+        r = client.get(f"/api/v1/tickets/{ticket_id}", headers=_auth(other_token))
+        assert r.status_code == 404
+
+    def test_admin_list_tickets(self, client):
+        _make_admin()
+        admin_token = _login(client, email="admin@test.com", password="AdminPass1!")
+        r = client.get("/api/v1/tickets/admin/all", headers=_auth(admin_token))
+        assert r.status_code == 200
+        assert isinstance(r.json(), list)
+
+    def test_admin_update_ticket(self, client):
+        _register(client)
+        token = _login(client)
+        c = client.post("/api/v1/tickets", headers=_auth(token), json={
+            "category": "HARASSMENT",
+            "subject": "Passenger was threatening",
+            "description": "The passenger made threatening remarks during the journey.",
+        })
+        ticket_id = c.json()["id"]
+        _make_admin()
+        admin_token = _login(client, email="admin@test.com", password="AdminPass1!")
+        r = client.patch(f"/api/v1/tickets/admin/{ticket_id}", headers=_auth(admin_token), json={
+            "status": "IN_PROGRESS",
+            "admin_note": "We are reviewing your report and will respond within 24 hours.",
+        })
+        assert r.status_code == 200
+        assert r.json()["status"] == "IN_PROGRESS"
+        assert "24 hours" in r.json()["admin_note"]
+
+    def test_non_admin_cannot_list_all_tickets(self, client):
+        _register(client)
+        token = _login(client)
+        r = client.get("/api/v1/tickets/admin/all", headers=_auth(token))
+        assert r.status_code == 403
+
+
 class TestAuthGuards:
     @pytest.mark.parametrize("method,url", [
         ("GET",  "/api/v1/users/me"),

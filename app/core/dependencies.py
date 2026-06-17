@@ -42,6 +42,21 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="Invalid authentication credentials") from exc
 
 
+def require_admin(
+    token: str = Depends(security),
+    db: Session = Depends(get_db),
+):
+    try:
+        token_data = decode_access_token(token)
+        user_id = UUID(token_data["sub"])
+        user = user_repo.get_by_id(db, user_id)
+        if not user or not user.is_admin:
+            raise HTTPException(status_code=403, detail="Admin access required")
+        return user
+    except ValueError as exc:
+        raise HTTPException(status_code=401, detail="Invalid authentication credentials") from exc
+
+
 def rate_limit(name: str, limit: int, window_seconds: int) -> Callable[[Request], None]:
     def dependency(request: Request) -> None:
         client_host = request.client.host if request.client else "unknown"

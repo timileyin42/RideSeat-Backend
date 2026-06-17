@@ -75,5 +75,22 @@ class IdentityVerificationStatus(StrEnum):
     REJECTED = "REJECTED"
 
 
+class TicketCategory(StrEnum):
+    HARASSMENT = "HARASSMENT"
+    FRAUD = "FRAUD"
+    SAFETY = "SAFETY"
+    MISCONDUCT = "MISCONDUCT"
+    NO_SHOW = "NO_SHOW"
+    PROPERTY_DAMAGE = "PROPERTY_DAMAGE"
+    OTHER = "OTHER"
+
+
+class TicketStatus(StrEnum):
+    OPEN = "OPEN"
+    IN_PROGRESS = "IN_PROGRESS"
+    RESOLVED = "RESOLVED"
+    CLOSED = "CLOSED"
+
+
 PLATFORM_FEE_PERCENT = 0.1
 CURRENCY = "gbp"
