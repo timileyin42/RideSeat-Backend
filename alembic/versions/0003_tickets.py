@@ -5,7 +5,6 @@ Revises: 0002
 Create Date: 2026-06-17
 """
 
-import sqlalchemy as sa
 from alembic import op
 
 revision = "0003"
@@ -18,7 +17,7 @@ TICKET_STATUS = ("OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED")
 
 
 def upgrade() -> None:
-    # DO block swallows duplicate_object — idempotent even if a prior failed run created the types
+    # DO blocks are idempotent — swallow duplicate_object from prior failed runs
     op.execute("""
         DO $$ BEGIN
             CREATE TYPE ticketcategory AS ENUM (
@@ -34,27 +33,28 @@ def upgrade() -> None:
         END $$;
     """)
 
-    op.create_table(
-        "tickets",
-        sa.Column("id", sa.UUID(), primary_key=True),
-        sa.Column("reporter_id", sa.UUID(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("reported_user_id", sa.UUID(), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
-        sa.Column("trip_id", sa.UUID(), sa.ForeignKey("trips.id", ondelete="SET NULL"), nullable=True),
-        # create_type=False — types already created above; prevents SQLAlchemy auto-DDL double-creation
-        sa.Column("category", sa.Enum(*TICKET_CATEGORY, name="ticketcategory", create_type=False), nullable=False),
-        sa.Column("subject", sa.String(200), nullable=False),
-        sa.Column("description", sa.Text(), nullable=False),
-        sa.Column("status", sa.Enum(*TICKET_STATUS, name="ticketstatus", create_type=False), nullable=False, server_default="OPEN"),
-        sa.Column("admin_note", sa.Text(), nullable=True),
-        sa.Column("resolved_by", sa.UUID(), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-    )
-    op.create_index("ix_tickets_reporter_id", "tickets", ["reporter_id"])
-    op.create_index("ix_tickets_status", "tickets", ["status"])
+    # Raw SQL for table creation — bypasses SQLAlchemy's auto-DDL which re-emits CREATE TYPE
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS tickets (
+            id              UUID PRIMARY KEY,
+            reporter_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            reported_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+            trip_id         UUID REFERENCES trips(id) ON DELETE SET NULL,
+            category        ticketcategory NOT NULL,
+            subject         VARCHAR(200) NOT NULL,
+            description     TEXT NOT NULL,
+            status          ticketstatus NOT NULL DEFAULT 'OPEN',
+            admin_note      TEXT,
+            resolved_by     UUID REFERENCES users(id) ON DELETE SET NULL,
+            created_at      TIMESTAMPTZ NOT NULL,
+            updated_at      TIMESTAMPTZ NOT NULL
+        )
+    """)
+    op.execute("CREATE INDEX IF NOT EXISTS ix_tickets_reporter_id ON tickets (reporter_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_tickets_status ON tickets (status)")
 
 
 def downgrade() -> None:
-    op.drop_table("tickets")
+    op.execute("DROP TABLE IF EXISTS tickets")
     op.execute("DROP TYPE IF EXISTS ticketcategory")
     op.execute("DROP TYPE IF EXISTS ticketstatus")
