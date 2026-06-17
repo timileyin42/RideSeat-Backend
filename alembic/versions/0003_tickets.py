@@ -18,8 +18,9 @@ TICKET_STATUS = ("OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED")
 
 
 def upgrade() -> None:
-    op.execute("CREATE TYPE ticketcategory AS ENUM %s" % str(TICKET_CATEGORY).replace("[", "(").replace("]", ")"))
-    op.execute("CREATE TYPE ticketstatus AS ENUM %s" % str(TICKET_STATUS).replace("[", "(").replace("]", ")"))
+    # IF NOT EXISTS makes this idempotent — safe even if a prior failed run created the types
+    op.execute("CREATE TYPE IF NOT EXISTS ticketcategory AS ENUM ('HARASSMENT', 'FRAUD', 'SAFETY', 'MISCONDUCT', 'NO_SHOW', 'PROPERTY_DAMAGE', 'OTHER')")
+    op.execute("CREATE TYPE IF NOT EXISTS ticketstatus AS ENUM ('OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED')")
 
     op.create_table(
         "tickets",
@@ -27,10 +28,11 @@ def upgrade() -> None:
         sa.Column("reporter_id", sa.UUID(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
         sa.Column("reported_user_id", sa.UUID(), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
         sa.Column("trip_id", sa.UUID(), sa.ForeignKey("trips.id", ondelete="SET NULL"), nullable=True),
-        sa.Column("category", sa.Enum(*TICKET_CATEGORY, name="ticketcategory"), nullable=False),
+        # create_type=False — types already created above; prevents SQLAlchemy auto-DDL double-creation
+        sa.Column("category", sa.Enum(*TICKET_CATEGORY, name="ticketcategory", create_type=False), nullable=False),
         sa.Column("subject", sa.String(200), nullable=False),
         sa.Column("description", sa.Text(), nullable=False),
-        sa.Column("status", sa.Enum(*TICKET_STATUS, name="ticketstatus"), nullable=False, server_default="OPEN"),
+        sa.Column("status", sa.Enum(*TICKET_STATUS, name="ticketstatus", create_type=False), nullable=False, server_default="OPEN"),
         sa.Column("admin_note", sa.Text(), nullable=True),
         sa.Column("resolved_by", sa.UUID(), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
