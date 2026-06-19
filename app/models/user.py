@@ -58,6 +58,7 @@ class User(Base):
     selfie_url: Mapped[str | None] = mapped_column(String(500), default=None)
     id_document_url: Mapped[str | None] = mapped_column(String(500), default=None)
     driver_license_url: Mapped[str | None] = mapped_column(String(500), default=None)
+    driver_license_back_url: Mapped[str | None] = mapped_column(String(500), default=None)
     driver_license_number: Mapped[str | None] = mapped_column(EncryptedString(), default=None)
     identity_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     identity_verification_status: Mapped[IdentityVerificationStatus | None] = mapped_column(

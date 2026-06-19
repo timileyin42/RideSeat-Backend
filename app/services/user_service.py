@@ -190,11 +190,17 @@ class UserService:
         content_type: str | None,
         email_service=None,
         vision_service=None,
+        back_content: bytes | None = None,
+        back_content_type: str | None = None,
     ) -> User:
         if not content_type or not content_type.startswith("image/"):
-            raise ValueError("Driver licence photo must be an image")
+            raise ValueError("Driver licence front photo must be an image")
         if len(content) > 10 * 1024 * 1024:
             raise ValueError("File too large (max 10 MB)")
+        if back_content and (not back_content_type or not back_content_type.startswith("image/")):
+            raise ValueError("Driver licence back photo must be an image")
+        if back_content and len(back_content) > 10 * 1024 * 1024:
+            raise ValueError("Back photo too large (max 10 MB)")
         is_valid, reason = validate_uk_licence(
             licence_number,
             last_name=user.last_name or None,
@@ -217,6 +223,9 @@ class UserService:
                 pass  # OCR unavailable — fall back to admin manual review
         url = self.storage_service.upload_bytes(content, content_type, folder="driver_licences")
         user.driver_license_url = url
+        if back_content and back_content_type:
+            back_url = self.storage_service.upload_bytes(back_content, back_content_type, folder="driver_licences")
+            user.driver_license_back_url = back_url
         user.driver_license_number = licence_number.replace(" ", "").upper()
         user.identity_verification_status = IdentityVerificationStatus.PENDING
         updated = self.user_repo.update(db, user)

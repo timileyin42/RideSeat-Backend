@@ -43,7 +43,7 @@
 
     <!-- Photos -->
     <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px;">
-      {% for label, url in [('Driving Licence', user.licence_url), ('Selfie', user.selfie_url), ('ID Document', user.id_document_url)] %}
+      {% for label, url in [('Licence (Front)', user.licence_front_url), ('Licence (Back)', user.licence_back_url), ('Selfie', user.selfie_url), ('ID Document', user.id_document_url)] %}
       <div>
         <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#7C3AED;text-transform:uppercase;margin-bottom:6px;">{{ label }}</div>
         {% if url %}

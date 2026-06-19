@@ -173,7 +173,8 @@ def verification_queue(
             "last_name": u.last_name,
             "email": u.email,
             "driver_license_number": u.driver_license_number,
-            "licence_url": _sign(u.driver_license_url),
+            "licence_front_url": _sign(u.driver_license_url),
+            "licence_back_url": _sign(u.driver_license_back_url),
             "selfie_url": _sign(u.selfie_url),
             "id_document_url": _sign(u.id_document_url),
         }

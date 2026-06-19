@@ -178,15 +178,20 @@ def get_public_profile(user_id: UUID, db: Session = Depends(get_db)):
 @router.post("/me/verification/driver-licence", response_model=UserPrivateResponse)
 async def upload_driver_licence(
     licence_number: str = Form(...),
-    photo: UploadFile = File(...),
+    photo_front: UploadFile = File(...),
+    photo_back: UploadFile | None = File(default=None),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     try:
-        content = await photo.read()
+        front_content = await photo_front.read()
+        back_content = await photo_back.read() if photo_back else None
+        back_type = photo_back.content_type if photo_back else None
         user = user_service.submit_driver_license(
-            db, current_user, licence_number, content, photo.content_type,
-            email_service, vision_service
+            db, current_user, licence_number,
+            front_content, photo_front.content_type,
+            email_service, vision_service,
+            back_content=back_content, back_content_type=back_type,
         )
         db.commit()
         return user
