@@ -15,6 +15,7 @@ from app.schemas.auth import (
     ResetPasswordRequest,
     VerifyEmailRequest,
 )
+from app.schemas.base import DataResponse
 from app.services.auth_service import AuthService
 from app.repositories.user_repo import UserRepository
 from app.services.email_service import EmailService
@@ -23,7 +24,7 @@ router = APIRouter()
 auth_service = AuthService(UserRepository(), EmailService())
 
 
-@router.post("/register", response_model=AuthTokenResponse, status_code=201)
+@router.post("/register", response_model=DataResponse[AuthTokenResponse], status_code=201)
 def register(
     payload: RegisterRequest,
     db: Session = Depends(get_db),
@@ -36,7 +37,7 @@ def register(
             password=payload.password,
         )
         db.commit()
-        return AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user)
+        return DataResponse(data=AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user))
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -44,7 +45,7 @@ def register(
 
 @router.post(
     "/login",
-    response_model=AuthTokenResponse,
+    response_model=DataResponse[AuthTokenResponse],
     openapi_extra={
         "requestBody": {
             "required": True,
@@ -85,23 +86,23 @@ async def login(
         if not email or not password:
             raise ValueError("Invalid credentials")
         user, access_token, refresh_token = auth_service.login(db, email, password)
-        return AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user)
+        return DataResponse(data=AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user))
     except ValueError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
 
 
-@router.post("/google", response_model=AuthTokenResponse)
+@router.post("/google", response_model=DataResponse[AuthTokenResponse])
 def google_auth(payload: GoogleAuthRequest, db: Session = Depends(get_db)):
     try:
         user, access_token, refresh_token = auth_service.google_auth(db, payload.id_token)
         db.commit()
-        return AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user)
+        return DataResponse(data=AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user))
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.post("/google/mobile", response_model=AuthTokenResponse)
+@router.post("/google/mobile", response_model=DataResponse[AuthTokenResponse])
 def google_mobile_auth(
     payload: GoogleMobileAuthRequest,
     db: Session = Depends(get_db),
@@ -110,18 +111,18 @@ def google_mobile_auth(
     try:
         user, access_token, refresh_token = auth_service.google_auth(db, payload.id_token)
         db.commit()
-        return AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user)
+        return DataResponse(data=AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user))
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.post("/verify-email", response_model=AuthTokenResponse)
+@router.post("/verify-email", response_model=DataResponse[AuthTokenResponse])
 def verify_email(payload: VerifyEmailRequest, db: Session = Depends(get_db)):
     try:
         user, access_token, refresh_token = auth_service.verify_email(db, payload.email, payload.token)
         db.commit()
-        return AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user)
+        return DataResponse(data=AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user))
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -135,7 +136,7 @@ def resend_otp(
 ):
     try:
         auth_service.resend_verify_otp(db, payload.email)
-        return {"status": "sent"}
+        return {"data": {"status": "sent"}}
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -148,7 +149,7 @@ def forgot_password(
 ):
     try:
         auth_service.forgot_password(db, payload.email)
-        return {"status": "sent"}
+        return {"data": {"status": "sent"}}
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -162,7 +163,7 @@ def reset_password(
     try:
         auth_service.reset_password(db, payload.email, payload.token, payload.new_password)
         db.commit()
-        return {"status": "reset"}
+        return {"data": {"status": "reset"}}
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc

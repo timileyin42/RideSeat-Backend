@@ -7,4 +7,4 @@ T = TypeVar("T")
 
 
 class DataResponse(BaseModel, Generic[T]):
-    data: list[T]
+    data: T

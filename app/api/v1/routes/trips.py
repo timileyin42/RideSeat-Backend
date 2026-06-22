@@ -18,7 +18,7 @@ trip_service = TripService(TripRepository())
 vehicle_repo = VehicleRepository()
 
 
-@router.post("", response_model=TripResponse, status_code=201)
+@router.post("", response_model=DataResponse[TripResponse], status_code=201)
 def create_trip(
     payload: TripCreate,
     db: Session = Depends(get_db),
@@ -35,7 +35,7 @@ def create_trip(
             data["vehicle_color"] = vehicle.color
         trip = trip_service.create_trip(db, current_user, data)
         db.commit()
-        return trip
+        return DataResponse(data=trip)
     except HTTPException:
         raise
     except ValueError as exc:
@@ -43,7 +43,7 @@ def create_trip(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("/search", response_model=DataResponse[TripResponse])
+@router.get("/search", response_model=DataResponse[list[TripResponse]])
 def search_trips(
     origin_city: str | None = None,
     destination_city: str | None = None,
@@ -59,15 +59,15 @@ def search_trips(
     ))
 
 
-@router.get("/{trip_id}", response_model=TripResponse)
+@router.get("/{trip_id}", response_model=DataResponse[TripResponse])
 def get_trip(trip_id: UUID, db: Session = Depends(get_db)):
     try:
-        return trip_service.get_trip(db, trip_id)
+        return DataResponse(data=trip_service.get_trip(db, trip_id))
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@router.put("/{trip_id}", response_model=TripResponse)
+@router.put("/{trip_id}", response_model=DataResponse[TripResponse])
 def update_trip(
     trip_id: UUID,
     payload: TripUpdate,
@@ -85,7 +85,7 @@ def update_trip(
             data["vehicle_color"] = vehicle.color
         trip = trip_service.update_trip(db, current_user, trip_id, data)
         db.commit()
-        return trip
+        return DataResponse(data=trip)
     except HTTPException:
         raise
     except ValueError as exc:
@@ -93,7 +93,7 @@ def update_trip(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.delete("/{trip_id}", response_model=TripResponse)
+@router.delete("/{trip_id}", response_model=DataResponse[TripResponse])
 def cancel_trip(
     trip_id: UUID,
     db: Session = Depends(get_db),
@@ -102,7 +102,7 @@ def cancel_trip(
     try:
         trip = trip_service.cancel_trip(db, current_user, trip_id)
         db.commit()
-        return trip
+        return DataResponse(data=trip)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc

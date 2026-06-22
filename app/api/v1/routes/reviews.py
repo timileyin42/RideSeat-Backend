@@ -20,7 +20,7 @@ notification_service = NotificationService(DeviceRepository(), NotificationRepos
 review_service = ReviewService(ReviewRepository(), BookingRepository(), UserRepository(), notification_service)
 
 
-@router.post("", response_model=ReviewResponse, status_code=201)
+@router.post("", response_model=DataResponse[ReviewResponse], status_code=201)
 def create_review(
     payload: ReviewCreate,
     db: Session = Depends(get_db),
@@ -36,12 +36,12 @@ def create_review(
             comment=payload.comment,
         )
         db.commit()
-        return review
+        return DataResponse(data=review)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("/user/{user_id}", response_model=DataResponse[ReviewResponse])
+@router.get("/user/{user_id}", response_model=DataResponse[list[ReviewResponse]])
 def list_reviews(user_id: UUID, db: Session = Depends(get_db)):
     return DataResponse(data=review_service.list_reviews(db, user_id))

@@ -17,7 +17,7 @@ router = APIRouter()
 notification_service = NotificationService(DeviceRepository(), NotificationRepository(), UserRepository())
 
 
-@router.post("/devices/register", response_model=DeviceResponse, status_code=201)
+@router.post("/devices/register", response_model=DataResponse[DeviceResponse], status_code=201)
 def register_device(
     payload: DeviceRegistrationRequest,
     db: Session = Depends(get_db),
@@ -34,13 +34,13 @@ def register_device(
             payload.app_version,
         )
         db.commit()
-        return device
+        return DataResponse(data=device)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("", response_model=DataResponse[NotificationResponse])
+@router.get("", response_model=DataResponse[list[NotificationResponse]])
 def list_notifications(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -50,7 +50,7 @@ def list_notifications(
     return DataResponse(data=notification_service.list_notifications(db, current_user, limit=limit, offset=offset))
 
 
-@router.post("/{notification_id}/read", response_model=NotificationResponse)
+@router.post("/{notification_id}/read", response_model=DataResponse[NotificationResponse])
 def mark_notification_read(
     notification_id: UUID,
     db: Session = Depends(get_db),
@@ -59,7 +59,7 @@ def mark_notification_read(
     try:
         notification = notification_service.mark_read(db, current_user, notification_id)
         db.commit()
-        return notification
+        return DataResponse(data=notification)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=404, detail=str(exc)) from exc

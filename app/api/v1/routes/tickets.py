@@ -18,7 +18,7 @@ _svc = TicketService(TicketRepository())
 
 # ── user endpoints ─────────────────────────────────────────────────────────────
 
-@router.post("", response_model=TicketResponse, status_code=201)
+@router.post("", response_model=DataResponse[TicketResponse], status_code=201)
 def raise_ticket(
     payload: TicketCreate,
     db: Session = Depends(get_db),
@@ -35,13 +35,13 @@ def raise_ticket(
             trip_id=payload.trip_id,
         )
         db.commit()
-        return ticket
+        return DataResponse(data=ticket)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("/me", response_model=DataResponse[TicketResponse])
+@router.get("/me", response_model=DataResponse[list[TicketResponse]])
 def my_tickets(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -49,21 +49,21 @@ def my_tickets(
     return DataResponse(data=_svc.my_tickets(db, current_user))
 
 
-@router.get("/{ticket_id}", response_model=TicketResponse)
+@router.get("/{ticket_id}", response_model=DataResponse[TicketResponse])
 def get_ticket(
     ticket_id: UUID,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     try:
-        return _svc.get_ticket(db, current_user, ticket_id)
+        return DataResponse(data=_svc.get_ticket(db, current_user, ticket_id))
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 # ── admin endpoints ────────────────────────────────────────────────────────────
 
-@router.get("/admin/all", response_model=DataResponse[TicketResponse])
+@router.get("/admin/all", response_model=DataResponse[list[TicketResponse]])
 def admin_list_tickets(
     status: TicketStatus | None = Query(default=None),
     db: Session = Depends(get_db),
@@ -72,7 +72,7 @@ def admin_list_tickets(
     return DataResponse(data=_svc.list_tickets(db, current_user, status=status))
 
 
-@router.patch("/admin/{ticket_id}", response_model=TicketResponse)
+@router.patch("/admin/{ticket_id}", response_model=DataResponse[TicketResponse])
 def admin_update_ticket(
     ticket_id: UUID,
     payload: TicketAdminUpdate,
@@ -88,7 +88,7 @@ def admin_update_ticket(
             admin_note=payload.admin_note,
         )
         db.commit()
-        return ticket
+        return DataResponse(data=ticket)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc

@@ -32,7 +32,7 @@ booking_service = BookingService(
 )
 
 
-@router.post("", response_model=BookingResponse, status_code=201)
+@router.post("", response_model=DataResponse[BookingResponse], status_code=201)
 def create_booking(
     payload: BookingCreate,
     db: Session = Depends(get_db),
@@ -42,13 +42,13 @@ def create_booking(
     try:
         booking = booking_service.create_booking(db, current_user, UUID(payload.trip_id), payload.seats)
         db.commit()
-        return booking
+        return DataResponse(data=booking)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("/me", response_model=DataResponse[BookingResponse])
+@router.get("/me", response_model=DataResponse[list[BookingResponse]])
 def list_my_bookings(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -56,7 +56,7 @@ def list_my_bookings(
     return DataResponse(data=booking_service.list_bookings(db, current_user))
 
 
-@router.get("/driver", response_model=DataResponse[BookingResponse])
+@router.get("/driver", response_model=DataResponse[list[BookingResponse]])
 def list_driver_bookings(
     status: BookingStatus | None = Query(default=None),
     db: Session = Depends(get_db),
@@ -68,7 +68,7 @@ def list_driver_bookings(
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
-@router.patch("/{booking_id}/status", response_model=BookingResponse)
+@router.patch("/{booking_id}/status", response_model=DataResponse[BookingResponse])
 def update_booking_status(
     booking_id: UUID,
     payload: BookingStatusUpdate,
@@ -79,13 +79,13 @@ def update_booking_status(
     try:
         booking = booking_service.update_status(db, current_user, booking_id, payload.status)
         db.commit()
-        return booking
+        return DataResponse(data=booking)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.post("/{booking_id}/cancel", response_model=BookingResponse)
+@router.post("/{booking_id}/cancel", response_model=DataResponse[BookingResponse])
 def cancel_booking(
     booking_id: UUID,
     db: Session = Depends(get_db),
@@ -95,7 +95,7 @@ def cancel_booking(
     try:
         booking = booking_service.cancel_booking(db, current_user, booking_id)
         db.commit()
-        return booking
+        return DataResponse(data=booking)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc

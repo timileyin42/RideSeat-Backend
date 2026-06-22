@@ -14,7 +14,7 @@ router = APIRouter()
 vehicle_service = VehicleService(VehicleRepository())
 
 
-@router.post("", response_model=VehicleResponse, status_code=201)
+@router.post("", response_model=DataResponse[VehicleResponse], status_code=201)
 def add_vehicle(
     payload: VehicleCreate,
     db: Session = Depends(get_db),
@@ -23,13 +23,13 @@ def add_vehicle(
     try:
         vehicle = vehicle_service.add_vehicle(db, current_user, payload.model_dump())
         db.commit()
-        return vehicle
+        return DataResponse(data=vehicle)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("", response_model=DataResponse[VehicleResponse])
+@router.get("", response_model=DataResponse[list[VehicleResponse]])
 def list_vehicles(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -37,7 +37,7 @@ def list_vehicles(
     return DataResponse(data=vehicle_service.list_vehicles(db, current_user))
 
 
-@router.put("/{vehicle_id}", response_model=VehicleResponse)
+@router.put("/{vehicle_id}", response_model=DataResponse[VehicleResponse])
 def update_vehicle(
     vehicle_id: UUID,
     payload: VehicleUpdate,
@@ -47,7 +47,7 @@ def update_vehicle(
     try:
         vehicle = vehicle_service.update_vehicle(db, current_user, vehicle_id, payload.model_dump())
         db.commit()
-        return vehicle
+        return DataResponse(data=vehicle)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -67,7 +67,7 @@ def delete_vehicle(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@router.put("/{vehicle_id}/default", response_model=VehicleResponse)
+@router.put("/{vehicle_id}/default", response_model=DataResponse[VehicleResponse])
 def set_default_vehicle(
     vehicle_id: UUID,
     db: Session = Depends(get_db),
@@ -76,7 +76,7 @@ def set_default_vehicle(
     try:
         vehicle = vehicle_service.set_default(db, current_user, vehicle_id)
         db.commit()
-        return vehicle
+        return DataResponse(data=vehicle)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=404, detail=str(exc)) from exc

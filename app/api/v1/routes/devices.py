@@ -7,6 +7,7 @@ from app.core.dependencies import get_current_user, get_db, rate_limit
 from app.repositories.device_repo import DeviceRepository
 from app.repositories.notification_repo import NotificationRepository
 from app.repositories.user_repo import UserRepository
+from app.schemas.base import DataResponse
 from app.schemas.device import DeviceResponse, DeviceTokenUpdateRequest
 from app.services.notification_service import NotificationService
 
@@ -14,7 +15,7 @@ router = APIRouter()
 notification_service = NotificationService(DeviceRepository(), NotificationRepository(), UserRepository())
 
 
-@router.post("/update-token", response_model=DeviceResponse)
+@router.post("/update-token", response_model=DataResponse[DeviceResponse])
 def update_device_token(
     payload: DeviceTokenUpdateRequest,
     db: Session = Depends(get_db),
@@ -32,7 +33,7 @@ def update_device_token(
             payload.app_version,
         )
         db.commit()
-        return device
+        return DataResponse(data=device)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc

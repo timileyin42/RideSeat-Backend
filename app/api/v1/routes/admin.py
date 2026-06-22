@@ -46,7 +46,7 @@ admin_service = AdminService(
 )
 
 
-@router.get("/users", response_model=DataResponse[UserPrivateResponse])
+@router.get("/users", response_model=DataResponse[list[UserPrivateResponse]])
 def list_users(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -59,18 +59,18 @@ def list_users(
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
-@router.get("/metrics", response_model=AdminMetricsResponse)
+@router.get("/metrics", response_model=DataResponse[AdminMetricsResponse])
 def get_metrics(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     try:
-        return admin_service.get_metrics(db, current_user)
+        return DataResponse(data=admin_service.get_metrics(db, current_user))
     except ValueError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
-@router.get("/trips", response_model=DataResponse[TripResponse])
+@router.get("/trips", response_model=DataResponse[list[TripResponse]])
 def list_trips(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -83,7 +83,7 @@ def list_trips(
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
-@router.get("/bookings", response_model=DataResponse[BookingResponse])
+@router.get("/bookings", response_model=DataResponse[list[BookingResponse]])
 def list_bookings(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -96,7 +96,7 @@ def list_bookings(
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
-@router.post("/bookings/{booking_id}/resolve", response_model=BookingResponse)
+@router.post("/bookings/{booking_id}/resolve", response_model=DataResponse[BookingResponse])
 def resolve_booking_dispute(
     booking_id: UUID,
     payload: BookingDisputeResolve,
@@ -106,13 +106,13 @@ def resolve_booking_dispute(
     try:
         booking = booking_service.resolve_dispute(db, current_user, booking_id, payload.status)
         db.commit()
-        return booking
+        return DataResponse(data=booking)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
-@router.post("/users/{user_id}/verification/approve", response_model=UserPrivateResponse)
+@router.post("/users/{user_id}/verification/approve", response_model=DataResponse[UserPrivateResponse])
 def approve_identity(
     user_id: UUID,
     db: Session = Depends(get_db),
@@ -121,13 +121,13 @@ def approve_identity(
     try:
         user = user_service.approve_identity(db, current_user, user_id, email_service=EmailService())
         db.commit()
-        return user
+        return DataResponse(data=user)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
-@router.post("/users/{user_id}/verification/reject", response_model=UserPrivateResponse)
+@router.post("/users/{user_id}/verification/reject", response_model=DataResponse[UserPrivateResponse])
 def reject_identity(
     user_id: UUID,
     payload: VerificationRejectRequest | None = None,
@@ -138,7 +138,7 @@ def reject_identity(
         reason = payload.reason if payload else None
         user = user_service.reject_identity(db, current_user, user_id, reason=reason, email_service=EmailService())
         db.commit()
-        return user
+        return DataResponse(data=user)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=403, detail=str(exc)) from exc

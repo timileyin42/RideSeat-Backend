@@ -21,7 +21,7 @@ notification_service = NotificationService(DeviceRepository(), NotificationRepos
 message_service = MessageService(MessageRepository(), BookingRepository(), TripRepository(), notification_service)
 
 
-@router.get("/{booking_id}", response_model=DataResponse[MessageResponse])
+@router.get("/{booking_id}", response_model=DataResponse[list[MessageResponse]])
 def list_messages(
     booking_id: UUID,
     db: Session = Depends(get_db),
@@ -33,7 +33,7 @@ def list_messages(
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
-@router.post("/{booking_id}", response_model=MessageResponse, status_code=201)
+@router.post("/{booking_id}", response_model=DataResponse[MessageResponse], status_code=201)
 def send_message(
     booking_id: UUID,
     payload: MessageCreate,
@@ -43,7 +43,7 @@ def send_message(
     try:
         message = message_service.send_message(db, current_user, booking_id, payload.content)
         db.commit()
-        return message
+        return DataResponse(data=message)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc

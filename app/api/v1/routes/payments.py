@@ -18,7 +18,7 @@ router = APIRouter()
 payment_service = PaymentService(PaymentRepository(), BookingRepository(), TripRepository(), UserRepository())
 
 
-@router.post("/intent", response_model=PaymentResponse)
+@router.post("/intent", response_model=DataResponse[PaymentResponse])
 def create_payment_intent(
     payload: PaymentIntentCreate,
     background_tasks: BackgroundTasks,
@@ -34,13 +34,13 @@ def create_payment_intent(
             background_tasks,
         )
         db.commit()
-        return payment
+        return DataResponse(data=payment)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.post("/webhook", response_model=PaymentResponse)
+@router.post("/webhook", response_model=DataResponse[PaymentResponse])
 async def stripe_webhook(
     request: Request,
     stripe_signature: str = Header(default=""),
@@ -50,13 +50,13 @@ async def stripe_webhook(
         payload = await request.body()
         payment = payment_service.handle_webhook(db, payload, stripe_signature)
         db.commit()
-        return payment
+        return DataResponse(data=payment)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("/history", response_model=DataResponse[PaymentResponse])
+@router.get("/history", response_model=DataResponse[list[PaymentResponse]])
 def list_payment_history(
     period: str = Query(pattern="^(7d|30d|6m|1y)$"),
     db: Session = Depends(get_db),
@@ -69,13 +69,13 @@ def list_payment_history(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("/{booking_id}", response_model=PaymentResponse)
+@router.get("/{booking_id}", response_model=DataResponse[PaymentResponse])
 def get_payment_status(
     booking_id: UUID,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     try:
-        return payment_service.get_payment_status_for_user(db, booking_id, current_user.id)
+        return DataResponse(data=payment_service.get_payment_status_for_user(db, booking_id, current_user.id))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
