@@ -11,6 +11,7 @@ from app.repositories.message_repo import MessageRepository
 from app.repositories.notification_repo import NotificationRepository
 from app.repositories.trip_repo import TripRepository
 from app.repositories.user_repo import UserRepository
+from app.schemas.base import DataResponse
 from app.schemas.message import MessageCreate, MessageResponse
 from app.services.message_service import MessageService
 from app.services.notification_service import NotificationService
@@ -20,14 +21,14 @@ notification_service = NotificationService(DeviceRepository(), NotificationRepos
 message_service = MessageService(MessageRepository(), BookingRepository(), TripRepository(), notification_service)
 
 
-@router.get("/{booking_id}", response_model=list[MessageResponse])
+@router.get("/{booking_id}", response_model=DataResponse[MessageResponse])
 def list_messages(
     booking_id: UUID,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     try:
-        return message_service.list_messages(db, current_user, booking_id)
+        return DataResponse(data=message_service.list_messages(db, current_user, booking_id))
     except ValueError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 

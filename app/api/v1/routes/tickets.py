@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.constants import TicketStatus
 from app.core.dependencies import get_current_user, get_db, require_admin
 from app.repositories.ticket_repo import TicketRepository
+from app.schemas.base import DataResponse
 from app.schemas.ticket import TicketAdminUpdate, TicketCreate, TicketResponse
 from app.services.ticket_service import TicketService
 
@@ -40,12 +41,12 @@ def raise_ticket(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("/me", response_model=list[TicketResponse])
+@router.get("/me", response_model=DataResponse[TicketResponse])
 def my_tickets(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    return _svc.my_tickets(db, current_user)
+    return DataResponse(data=_svc.my_tickets(db, current_user))
 
 
 @router.get("/{ticket_id}", response_model=TicketResponse)
@@ -62,13 +63,13 @@ def get_ticket(
 
 # ── admin endpoints ────────────────────────────────────────────────────────────
 
-@router.get("/admin/all", response_model=list[TicketResponse])
+@router.get("/admin/all", response_model=DataResponse[TicketResponse])
 def admin_list_tickets(
     status: TicketStatus | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user=Depends(require_admin),
 ):
-    return _svc.list_tickets(db, current_user, status=status)
+    return DataResponse(data=_svc.list_tickets(db, current_user, status=status))
 
 
 @router.patch("/admin/{ticket_id}", response_model=TicketResponse)

@@ -12,6 +12,7 @@ from app.repositories.notification_repo import NotificationRepository
 from app.repositories.payment_repo import PaymentRepository
 from app.repositories.trip_repo import TripRepository
 from app.repositories.user_repo import UserRepository
+from app.schemas.base import DataResponse
 from app.schemas.booking import BookingCreate, BookingResponse, BookingStatusUpdate
 from app.services.booking_service import BookingService
 from app.services.email_service import EmailService
@@ -47,22 +48,22 @@ def create_booking(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("/me", response_model=list[BookingResponse])
+@router.get("/me", response_model=DataResponse[BookingResponse])
 def list_my_bookings(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    return booking_service.list_bookings(db, current_user)
+    return DataResponse(data=booking_service.list_bookings(db, current_user))
 
 
-@router.get("/driver", response_model=list[BookingResponse])
+@router.get("/driver", response_model=DataResponse[BookingResponse])
 def list_driver_bookings(
     status: BookingStatus | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     try:
-        return booking_service.list_bookings_for_driver(db, current_user, status=status)
+        return DataResponse(data=booking_service.list_bookings_for_driver(db, current_user, status=status))
     except ValueError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 

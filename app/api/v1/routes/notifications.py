@@ -9,6 +9,7 @@ from app.repositories.device_repo import DeviceRepository
 from app.repositories.notification_repo import NotificationRepository
 from app.repositories.user_repo import UserRepository
 from app.schemas.device import DeviceRegistrationRequest, DeviceResponse
+from app.schemas.base import DataResponse
 from app.schemas.notification import NotificationResponse
 from app.services.notification_service import NotificationService
 
@@ -39,14 +40,14 @@ def register_device(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("", response_model=list[NotificationResponse])
+@router.get("", response_model=DataResponse[NotificationResponse])
 def list_notifications(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ):
-    return notification_service.list_notifications(db, current_user, limit=limit, offset=offset)
+    return DataResponse(data=notification_service.list_notifications(db, current_user, limit=limit, offset=offset))
 
 
 @router.post("/{notification_id}/read", response_model=NotificationResponse)

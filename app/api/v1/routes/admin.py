@@ -13,6 +13,7 @@ from app.repositories.trip_repo import TripRepository
 from app.repositories.booking_repo import BookingRepository
 from app.repositories.user_repo import UserRepository
 from app.schemas.admin import AdminMetricsResponse, VerificationRejectRequest
+from app.schemas.base import DataResponse
 from app.schemas.booking import BookingDisputeResolve, BookingResponse
 from app.schemas.trip import TripResponse
 from app.schemas.user import UserPrivateResponse
@@ -45,7 +46,7 @@ admin_service = AdminService(
 )
 
 
-@router.get("/users", response_model=list[UserPrivateResponse])
+@router.get("/users", response_model=DataResponse[UserPrivateResponse])
 def list_users(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -53,7 +54,7 @@ def list_users(
     offset: int = Query(default=0, ge=0),
 ):
     try:
-        return user_service.list_users(db, current_user, limit=limit, offset=offset)
+        return DataResponse(data=user_service.list_users(db, current_user, limit=limit, offset=offset))
     except ValueError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
@@ -69,7 +70,7 @@ def get_metrics(
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
-@router.get("/trips", response_model=list[TripResponse])
+@router.get("/trips", response_model=DataResponse[TripResponse])
 def list_trips(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -77,12 +78,12 @@ def list_trips(
     offset: int = Query(default=0, ge=0),
 ):
     try:
-        return trip_service.list_all_trips(db, current_user, limit=limit, offset=offset)
+        return DataResponse(data=trip_service.list_all_trips(db, current_user, limit=limit, offset=offset))
     except ValueError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
-@router.get("/bookings", response_model=list[BookingResponse])
+@router.get("/bookings", response_model=DataResponse[BookingResponse])
 def list_bookings(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -90,7 +91,7 @@ def list_bookings(
     offset: int = Query(default=0, ge=0),
 ):
     try:
-        return booking_service.list_all_bookings(db, current_user, limit=limit, offset=offset)
+        return DataResponse(data=booking_service.list_all_bookings(db, current_user, limit=limit, offset=offset))
     except ValueError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 

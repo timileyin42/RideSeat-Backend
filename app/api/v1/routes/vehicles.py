@@ -6,6 +6,7 @@ from uuid import UUID
 
 from app.core.dependencies import get_current_user, get_db
 from app.repositories.vehicle_repo import VehicleRepository
+from app.schemas.base import DataResponse
 from app.schemas.vehicle import VehicleCreate, VehicleResponse, VehicleUpdate
 from app.services.vehicle_service import VehicleService
 
@@ -28,12 +29,12 @@ def add_vehicle(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("", response_model=list[VehicleResponse])
+@router.get("", response_model=DataResponse[VehicleResponse])
 def list_vehicles(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    return vehicle_service.list_vehicles(db, current_user)
+    return DataResponse(data=vehicle_service.list_vehicles(db, current_user))
 
 
 @router.put("/{vehicle_id}", response_model=VehicleResponse)

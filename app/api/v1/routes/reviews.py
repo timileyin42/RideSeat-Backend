@@ -10,6 +10,7 @@ from app.repositories.device_repo import DeviceRepository
 from app.repositories.notification_repo import NotificationRepository
 from app.repositories.review_repo import ReviewRepository
 from app.repositories.user_repo import UserRepository
+from app.schemas.base import DataResponse
 from app.schemas.review import ReviewCreate, ReviewResponse
 from app.services.review_service import ReviewService
 from app.services.notification_service import NotificationService
@@ -41,6 +42,6 @@ def create_review(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("/user/{user_id}", response_model=list[ReviewResponse])
+@router.get("/user/{user_id}", response_model=DataResponse[ReviewResponse])
 def list_reviews(user_id: UUID, db: Session = Depends(get_db)):
-    return review_service.list_reviews(db, user_id)
+    return DataResponse(data=review_service.list_reviews(db, user_id))

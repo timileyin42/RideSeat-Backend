@@ -10,6 +10,7 @@ from app.repositories.booking_repo import BookingRepository
 from app.repositories.payment_repo import PaymentRepository
 from app.repositories.trip_repo import TripRepository
 from app.repositories.user_repo import UserRepository
+from app.schemas.base import DataResponse
 from app.schemas.payment import PaymentIntentCreate, PaymentResponse
 from app.services.payment_service import PaymentService
 
@@ -55,7 +56,7 @@ async def stripe_webhook(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("/history", response_model=list[PaymentResponse])
+@router.get("/history", response_model=DataResponse[PaymentResponse])
 def list_payment_history(
     period: str = Query(pattern="^(7d|30d|6m|1y)$"),
     db: Session = Depends(get_db),
@@ -63,7 +64,7 @@ def list_payment_history(
     _=Depends(rate_limit("payments_history", limit=20, window_seconds=60)),
 ):
     try:
-        return payment_service.list_payment_history(db, current_user.id, period)
+        return DataResponse(data=payment_service.list_payment_history(db, current_user.id, period))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

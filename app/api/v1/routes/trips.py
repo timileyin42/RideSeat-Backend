@@ -9,6 +9,7 @@ from uuid import UUID
 from app.core.dependencies import get_current_user, get_db
 from app.repositories.trip_repo import TripRepository
 from app.repositories.vehicle_repo import VehicleRepository
+from app.schemas.base import DataResponse
 from app.schemas.trip import TripCreate, TripResponse, TripUpdate
 from app.services.trip_service import TripService
 
@@ -42,7 +43,7 @@ def create_trip(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("/search", response_model=list[TripResponse])
+@router.get("/search", response_model=DataResponse[TripResponse])
 def search_trips(
     origin_city: str | None = None,
     destination_city: str | None = None,
@@ -52,10 +53,10 @@ def search_trips(
     order: Literal["asc", "desc"] | None = None,
     db: Session = Depends(get_db),
 ):
-    return trip_service.search_trips(
+    return DataResponse(data=trip_service.search_trips(
         db, origin_city, destination_city, departure_date, passengers,
         sort_by=sort_by, order=order,
-    )
+    ))
 
 
 @router.get("/{trip_id}", response_model=TripResponse)
