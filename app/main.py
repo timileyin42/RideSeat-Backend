@@ -1,6 +1,8 @@
 """Application entry point."""
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
 from app.api.admin_web import router as admin_web_router
 from app.api.v1.router import api_router
@@ -21,6 +23,22 @@ def create_app() -> FastAPI:
         ),
         version="1.0.0",
     )
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(request: Request, exc: RequestValidationError):
+        errors = exc.errors()
+        if errors:
+            first = errors[0]
+            field = ".".join(str(loc) for loc in first.get("loc", []) if loc not in ("body", "query"))
+            msg = first.get("msg", "Validation error")
+            detail = f"{field}: {msg}" if field else msg
+        else:
+            detail = "Invalid request"
+        return JSONResponse(status_code=422, content={"data": None, "error": detail})
+
+    @app.exception_handler(HTTPException)
+    async def http_exception_handler(request: Request, exc: HTTPException):
+        return JSONResponse(status_code=exc.status_code, content={"data": None, "error": exc.detail})
+
     @app.get("/")
     def root():
         return {"message": "Welcome to RideSeat Backend", "docs": "/docs", "redoc": "/redoc"}

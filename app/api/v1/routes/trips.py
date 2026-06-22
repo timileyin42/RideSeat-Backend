@@ -1,6 +1,6 @@
 """Trip routes."""
 
-from datetime import date
+from datetime import date, datetime
 from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -47,14 +47,20 @@ def create_trip(
 def search_trips(
     origin_city: str | None = None,
     destination_city: str | None = None,
-    departure_date: date | None = None,
+    departure_date: str | None = None,
     passengers: int | None = Query(default=None, ge=1, le=6),
     sort_by: Literal["departure_time", "price", "seats_remaining"] | None = None,
     order: Literal["asc", "desc"] | None = None,
     db: Session = Depends(get_db),
 ):
+    parsed_date: date | None = None
+    if departure_date:
+        try:
+            parsed_date = datetime.fromisoformat(departure_date).date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid departure_date. Use YYYY-MM-DD format.")
     return DataResponse(data=trip_service.search_trips(
-        db, origin_city, destination_city, departure_date, passengers,
+        db, origin_city, destination_city, parsed_date, passengers,
         sort_by=sort_by, order=order,
     ))
 
