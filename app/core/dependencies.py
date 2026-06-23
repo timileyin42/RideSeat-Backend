@@ -5,7 +5,7 @@ from threading import Lock
 from time import monotonic
 
 from fastapi import Depends, HTTPException, Request
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 from uuid import UUID
 
@@ -13,7 +13,7 @@ from app.core.database import SessionLocal
 from app.core.security import decode_access_token
 from app.repositories.user_repo import UserRepository
 
-security = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+security = HTTPBearer()
 user_repo = UserRepository()
 rate_limit_lock = Lock()
 rate_limit_state: dict[str, list[float]] = {}
@@ -28,11 +28,11 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def get_current_user(
-    token: str = Depends(security),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db),
 ):
     try:
-        token_data = decode_access_token(token)
+        token_data = decode_access_token(credentials.credentials)
         user_id = UUID(token_data["sub"])
         user = user_repo.get_by_id(db, user_id)
         if not user:
@@ -43,11 +43,11 @@ def get_current_user(
 
 
 def require_admin(
-    token: str = Depends(security),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db),
 ):
     try:
-        token_data = decode_access_token(token)
+        token_data = decode_access_token(credentials.credentials)
         user_id = UUID(token_data["sub"])
         user = user_repo.get_by_id(db, user_id)
         if not user or not user.is_admin:
