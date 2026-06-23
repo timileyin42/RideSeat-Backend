@@ -4,7 +4,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.core.constants import BookingStatus, NotificationType, UserRole
+from app.core.constants import BookingStatus, NotificationType
 from app.models.booking import Booking
 from app.models.user import User
 from app.repositories.booking_repo import BookingRepository
@@ -182,8 +182,6 @@ class BookingService:
         driver: User,
         status: BookingStatus | None = None,
     ) -> list[Booking]:
-        if driver.role not in {UserRole.DRIVER, UserRole.BOTH}:
-            raise ValueError("Driver role required")
         return self.booking_repo.list_by_driver(db, driver.id, status=status)
 
     def list_all_bookings(self, db: Session, actor: User, limit: int | None = None, offset: int | None = None) -> list[Booking]:

@@ -166,6 +166,43 @@ def test_non_instant_booking_creates_pending_booking(db_session):
     assert booking.status == BookingStatus.PENDING
 
 
+def test_driver_booking_list_returns_empty_for_non_driver(db_session):
+    passenger = make_passenger(db_session, "driver-list-pax@example.com")
+
+    bookings = _make_booking_service().list_bookings_for_driver(db_session, passenger)
+
+    assert bookings == []
+
+
+def test_driver_can_get_passenger_phone_without_role_switch(db_session):
+    driver = make_passenger(db_session, "phone-driver@example.com")
+    passenger = make_passenger(db_session, "phone-passenger@example.com")
+    passenger.phone_number = "+447911123456"
+    passenger.is_phone_verified = True
+    UserRepository().update(db_session, passenger)
+
+    trip = TripRepository().create(db_session, Trip(
+        driver_id=driver.id,
+        **base_trip_data(),
+    ))
+    BookingRepository().create(db_session, Booking(
+        trip_id=trip.id,
+        passenger_id=passenger.id,
+        seats=1,
+        status=BookingStatus.CONFIRMED,
+        total_amount=20,
+    ))
+    db_session.commit()
+
+    phone_number = UserService(UserRepository(), BookingRepository()).get_phone_for_driver(
+        db_session,
+        driver,
+        passenger.id,
+    )
+
+    assert phone_number == "+447911123456"
+
+
 # ── Gap #4: Per-trip preferences ─────────────────────────────────────────────
 
 

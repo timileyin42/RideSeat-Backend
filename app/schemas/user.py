@@ -44,7 +44,6 @@ class UserUpdate(UserBase):
             "gender": "MALE",
             "date_of_birth": "1992-06-15",
             "phone_number": "+447911123456",
-            "role": "DRIVER",
             "smoking_preference": "NO_SMOKING",
             "chat_preference": "CHATTY",
             "notify_push": True,

@@ -5,7 +5,6 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.core.constants import UserRole
 from app.models.trip import Trip
 from app.models.user import User
 from app.repositories.trip_repo import TripRepository
@@ -23,8 +22,6 @@ class TripService:
         return self._to_response(db, trip)
 
     def create_trip(self, db: Session, driver: User, data: dict) -> dict:
-        if driver.role not in {UserRole.DRIVER, UserRole.BOTH}:
-            raise ValueError("Driver role required")
         if data["departure_time"] <= datetime.now(tz=timezone.utc):
             raise ValueError("Trip cannot be in the past")
         trip = Trip(driver_id=driver.id, **data)

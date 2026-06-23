@@ -14,7 +14,7 @@ from app.services.trip_service import TripService
 from app.utils.datetime import now_utc
 
 
-def test_create_trip_requires_driver_role(db_session):
+def test_create_trip_allows_passenger_role(db_session):
     user_repo = UserRepository()
     trip_repo = TripRepository()
     service = TripService(trip_repo)
@@ -44,8 +44,10 @@ def test_create_trip_requires_driver_role(db_session):
         "luggage_allowed": True,
     }
 
-    with pytest.raises(ValueError):
-        service.create_trip(db_session, passenger, data)
+    created = service.create_trip(db_session, passenger, data)
+
+    assert created["driver_id"] == passenger.id
+    assert created["origin_city"] == "Lagos"
 
 
 def test_create_trip_rejects_past_departure(db_session):

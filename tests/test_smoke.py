@@ -279,6 +279,13 @@ class TestUsers:
         assert r.status_code == 200
         assert r.json()["bio"] == "Hello Rideway"
 
+    def test_update_me_ignores_role_change(self, client):
+        _register(client)
+        token = _login(client)
+        r = client.put("/api/v1/users/me", json={"role": "DRIVER"}, headers=_auth(token))
+        assert r.status_code == 200
+        assert r.json()["role"] == "PASSENGER"
+
     def test_get_public_profile(self, client):
         data = _register(client)
         user_id = data["user"]["id"]
@@ -393,8 +400,6 @@ class TestVehicles:
 
 class TestTrips:
     def _create_trip(self, client, token):
-        # User must have DRIVER or BOTH role to post a trip
-        client.put("/api/v1/users/me", json={"role": "DRIVER"}, headers=_auth(token))
         r = client.post("/api/v1/trips", headers=_auth(token), json={
             "origin_city": "London",
             "destination_city": "Manchester",
@@ -465,7 +470,6 @@ class TestBookings:
     def _setup(self, client):
         _register(client, email="driver@test.com", first="Driver", last="One")
         driver_token = _login(client, email="driver@test.com")
-        client.put("/api/v1/users/me", json={"role": "DRIVER"}, headers=_auth(driver_token))
         trip_r = client.post("/api/v1/trips", headers=_auth(driver_token), json={
             "origin_city": "London", "destination_city": "Birmingham",
             "departure_time": _future_dt(48), "price_per_seat": 10.00,
@@ -517,7 +521,6 @@ class TestMessages:
     def _setup_with_booking(self, client):
         _register(client, email="driver2@test.com", first="D", last="R")
         driver_token = _login(client, email="driver2@test.com")
-        client.put("/api/v1/users/me", json={"role": "DRIVER"}, headers=_auth(driver_token))
         trip_r = client.post("/api/v1/trips", headers=_auth(driver_token), json={
             "origin_city": "Leeds", "destination_city": "Sheffield",
             "departure_time": _future_dt(24), "price_per_seat": 8.00,

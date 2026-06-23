@@ -8,7 +8,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.core.constants import IdentityVerificationStatus, UserRole
+from app.core.constants import IdentityVerificationStatus
 from app.models.user import User
 from app.utils.uk_licence import validate_uk_licence
 from app.repositories.booking_repo import BookingRepository
@@ -31,6 +31,8 @@ class UserService:
         return user
 
     def update_user(self, db: Session, user: User, updates: dict) -> User:
+        updates = dict(updates)
+        updates.pop("role", None)
         if "age_range" in updates and updates["age_range"] is not None:
             minimum_age = self._extract_min_age(updates["age_range"])
             if minimum_age < 18:
@@ -41,8 +43,6 @@ class UserService:
             user.is_phone_verified = False
             user.phone_verification_token = None
             user.phone_verification_expires_at = None
-        if user.role == UserRole.PASSENGER and self._has_vehicle_updates(updates):
-            user.role = UserRole.BOTH
         for key, value in updates.items():
             if value is not None:
                 setattr(user, key, value)
@@ -64,8 +64,6 @@ class UserService:
             raise ValueError("Vehicle photo file too large")
         photo_url = self.storage_service.upload_bytes(content, content_type, folder="vehicles")
         user.vehicle_photo_url = photo_url
-        if user.role == UserRole.PASSENGER:
-            user.role = UserRole.BOTH
         return self.user_repo.update(db, user)
 
     def list_users(self, db: Session, actor: User, limit: int | None = None, offset: int | None = None) -> list[User]:
@@ -143,8 +141,6 @@ class UserService:
         return self.user_repo.update(db, user)
 
     def get_phone_for_driver(self, db: Session, actor: User, passenger_id: UUID) -> str:
-        if actor.role not in {UserRole.DRIVER, UserRole.BOTH}:
-            raise ValueError("Driver role required")
         allowed = self.booking_repo.has_confirmed_booking_between(db, actor.id, passenger_id)
         if not allowed:
             raise ValueError("Phone number not available")
@@ -317,22 +313,3 @@ class UserService:
         years = today.year - value.year - ((today.month, today.day) < (value.month, value.day))
         if years < 18:
             raise ValueError("Age must be 18 or older")
-
-    def _has_vehicle_updates(self, updates: dict) -> bool:
-        vehicle_keys = {
-            "vehicle_photo_url",
-            "vehicle_make",
-            "vehicle_model",
-            "vehicle_type",
-            "vehicle_color",
-            "vehicle_year",
-            "vehicle_plate",
-            "luggage_size",
-            "back_seat_max",
-            "has_winter_tires",
-            "allows_bikes",
-            "allows_skis",
-            "allows_snowboards",
-            "allows_pets",
-        }
-        return any(updates.get(key) is not None for key in vehicle_keys)
