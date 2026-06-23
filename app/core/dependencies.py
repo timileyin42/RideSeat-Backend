@@ -32,13 +32,17 @@ def get_current_user(
     db: Session = Depends(get_db),
 ):
     try:
+        print(f"DEBUG token[:30]: {credentials.credentials[:30]}", flush=True)
         token_data = decode_access_token(credentials.credentials)
+        print(f"DEBUG sub: {token_data.get('sub')}", flush=True)
         user_id = UUID(token_data["sub"])
         user = user_repo.get_by_id(db, user_id)
+        print(f"DEBUG user found: {user is not None}", flush=True)
         if not user:
             raise HTTPException(status_code=401, detail="Invalid authentication credentials")
         return user
     except ValueError as exc:
+        print(f"DEBUG ValueError: {exc}", flush=True)
         raise HTTPException(status_code=401, detail="Invalid authentication credentials") from exc
 
 
