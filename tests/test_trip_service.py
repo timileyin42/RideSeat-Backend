@@ -50,6 +50,43 @@ def test_create_trip_allows_passenger_role(db_session):
     assert created["origin_city"] == "Lagos"
 
 
+def test_create_trip_accepts_naive_future_departure(db_session):
+    user_repo = UserRepository()
+    trip_repo = TripRepository()
+    service = TripService(trip_repo)
+
+    passenger = user_repo.create(
+        db_session,
+        User(
+            first_name="Naive",
+            last_name="Time",
+            email="naive-time@example.com",
+            password_hash=hash_password("pass1234"),
+            role=UserRole.PASSENGER,
+            is_email_verified=True,
+        ),
+    )
+    db_session.commit()
+
+    naive_future = now_utc().replace(tzinfo=None) + timedelta(hours=2)
+    data = {
+        "origin_city": "Lagos",
+        "destination_city": "Ibadan",
+        "departure_time": naive_future,
+        "available_seats": 3,
+        "price_per_seat": 20,
+        "vehicle_make": "Toyota",
+        "vehicle_model": "Corolla",
+        "vehicle_color": "Blue",
+        "luggage_allowed": True,
+    }
+
+    created = service.create_trip(db_session, passenger, data)
+
+    assert created["driver_id"] == passenger.id
+    assert created["origin_city"] == "Lagos"
+
+
 def test_create_trip_rejects_past_departure(db_session):
     user_repo = UserRepository()
     trip_repo = TripRepository()

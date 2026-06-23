@@ -1,6 +1,6 @@
 """Trip service."""
 
-from datetime import date, datetime, timezone
+from datetime import date
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.models.trip import Trip
 from app.models.user import User
 from app.repositories.trip_repo import TripRepository
+from app.utils.datetime import ensure_utc, now_utc
 from app.utils.pagination import normalize_pagination
 
 
@@ -22,7 +23,7 @@ class TripService:
         return self._to_response(db, trip)
 
     def create_trip(self, db: Session, driver: User, data: dict) -> dict:
-        if data["departure_time"] <= datetime.now(tz=timezone.utc):
+        if ensure_utc(data["departure_time"]) <= now_utc():
             raise ValueError("Trip cannot be in the past")
         trip = Trip(driver_id=driver.id, **data)
         created = self.trip_repo.create(db, trip)
@@ -35,7 +36,7 @@ class TripService:
         if trip.driver_id != driver.id:
             raise ValueError("Not allowed to update this trip")
         if "departure_time" in updates and updates["departure_time"]:
-            if updates["departure_time"] <= datetime.now(tz=timezone.utc):
+            if ensure_utc(updates["departure_time"]) <= now_utc():
                 raise ValueError("Trip cannot be in the past")
         if "available_seats" in updates and updates["available_seats"] is not None:
             confirmed_seats = self.trip_repo.count_confirmed_seats(db, trip.id)
