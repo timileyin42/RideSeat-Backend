@@ -4,12 +4,14 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_db, rate_limit
+from app.core.security import create_access_token, create_refresh_token, decode_refresh_token
 from app.schemas.auth import (
     AuthTokenResponse,
     ForgotPasswordRequest,
     GoogleAuthRequest,
     GoogleMobileAuthRequest,
     LoginRequest,
+    RefreshTokenRequest,
     RegisterRequest,
     ResendOTPRequest,
     ResetPasswordRequest,
@@ -167,3 +169,28 @@ def reset_password(
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/refresh", response_model=DataResponse[AuthTokenResponse])
+def refresh_token(
+    payload: RefreshTokenRequest,
+    db: Session = Depends(get_db),
+    _=Depends(rate_limit("auth_refresh", limit=20, window_seconds=60)),
+):
+    try:
+        from uuid import UUID
+        token_data = decode_refresh_token(payload.refresh_token)
+        user_id = UUID(token_data["sub"])
+        user_repo = auth_service.user_repo
+        user = user_repo.get_by_id(db, user_id)
+        if not user or not user.is_active:
+            raise ValueError("User not found")
+        access_token = create_access_token(str(user.id))
+        new_refresh_token = create_refresh_token(str(user.id))
+        return DataResponse(data=AuthTokenResponse(
+            access_token=access_token,
+            refresh_token=new_refresh_token,
+            user=user,
+        ))
+    except ValueError as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc

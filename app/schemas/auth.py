@@ -104,3 +104,11 @@ class GoogleMobileAuthRequest(BaseModel):
     })
 
     id_token: str
+
+
+class RefreshTokenRequest(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "example": {"refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."}
+    })
+
+    refresh_token: str

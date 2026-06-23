@@ -39,3 +39,14 @@ def decode_access_token(token: str) -> dict:
         return jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
     except JWTError as exc:
         raise ValueError("Invalid token") from exc
+
+
+def decode_refresh_token(token: str) -> dict:
+    settings = get_settings()
+    try:
+        payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+        if payload.get("typ") != "refresh":
+            raise ValueError("Not a refresh token")
+        return payload
+    except JWTError as exc:
+        raise ValueError("Invalid refresh token") from exc
