@@ -15,7 +15,16 @@ class BookingRepository:
         return db.get(Booking, booking_id)
 
     def list_by_user(self, db: Session, user_id: UUID) -> list[Booking]:
-        stmt = select(Booking).where(Booking.passenger_id == user_id)
+        # Get all bookings where user is passenger OR driver (via trip)
+        stmt = (
+            select(Booking)
+            .outerjoin(Trip, Trip.id == Booking.trip_id)
+            .where(
+                (Booking.passenger_id == user_id) | 
+                (Trip.driver_id == user_id)
+            )
+            .order_by(Booking.created_at.desc())
+        )
         return list(db.execute(stmt).scalars().all())
 
     def list_all(self, db: Session, limit: int = 50, offset: int = 0) -> list[Booking]:
