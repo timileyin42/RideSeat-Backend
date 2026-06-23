@@ -48,7 +48,8 @@ def my_trips(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    return DataResponse(data=trip_service.trip_repo.list_by_driver(db, current_user.id))
+    trips = trip_service.trip_repo.list_by_driver(db, current_user.id)
+    return DataResponse(data=[trip_service._to_response(db, t) for t in trips])
 
 
 @router.get("/search", response_model=DataResponse[list[TripResponse]])
