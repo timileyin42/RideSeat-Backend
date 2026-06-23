@@ -156,6 +156,22 @@ def forgot_password(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.post("/token", include_in_schema=False)
+async def swagger_token(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """OAuth2-compatible endpoint for Swagger UI login. Returns flat {access_token, token_type}."""
+    form = await request.form()
+    email = form.get("username") or form.get("email")
+    password = form.get("password")
+    try:
+        user, access_token, _ = auth_service.login(db, str(email), str(password))
+        return {"access_token": access_token, "token_type": "bearer"}
+    except ValueError as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
+
+
 @router.post("/reset-password")
 def reset_password(
     payload: ResetPasswordRequest,
