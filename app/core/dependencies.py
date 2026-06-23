@@ -32,23 +32,13 @@ def get_current_user(
     db: Session = Depends(get_db),
 ):
     try:
-        import sys
-        print("DEBUG [get_current_user]: Token received:", repr(token), file=sys.stderr)
         token_data = decode_access_token(token)
-        print("DEBUG [get_current_user]: Decoded token data:", token_data, file=sys.stderr)
         user_id = UUID(token_data["sub"])
-        print("DEBUG [get_current_user]: User ID from token:", user_id, file=sys.stderr)
         user = user_repo.get_by_id(db, user_id)
-        print("DEBUG [get_current_user]: Found user:", user, file=sys.stderr)
         if not user:
-            print("DEBUG [get_current_user]: User not found!", file=sys.stderr)
             raise HTTPException(status_code=401, detail="Invalid authentication credentials")
         return user
-    except Exception as exc:
-        import sys
-        import traceback
-        print("DEBUG [get_current_user]: Exception:", str(exc), file=sys.stderr)
-        print("DEBUG [get_current_user]: Traceback:", traceback.format_exc(), file=sys.stderr)
+    except ValueError as exc:
         raise HTTPException(status_code=401, detail="Invalid authentication credentials") from exc
 
 
