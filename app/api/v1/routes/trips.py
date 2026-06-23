@@ -43,6 +43,14 @@ def create_trip(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.get("/mine", response_model=DataResponse[list[TripResponse]])
+def my_trips(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    return DataResponse(data=trip_service.trip_repo.list_by_driver(db, current_user.id))
+
+
 @router.get("/search", response_model=DataResponse[list[TripResponse]])
 def search_trips(
     origin_city: str | None = None,

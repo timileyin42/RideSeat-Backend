@@ -81,6 +81,15 @@ class TripRepository:
         stmt = stmt.order_by(col).offset(offset).limit(limit)
         return list(db.execute(stmt).scalars().all())
 
+    def list_by_driver(self, db: Session, driver_id: UUID) -> list[Trip]:
+        stmt = (
+            select(Trip)
+            .options(selectinload(Trip.driver))
+            .where(Trip.driver_id == driver_id)
+            .order_by(Trip.departure_time.asc())
+        )
+        return list(db.execute(stmt).scalars().all())
+
     def count_confirmed_seats(self, db: Session, trip_id: UUID) -> int:
         stmt = select(func.coalesce(func.sum(Booking.seats), 0)).where(
             Booking.trip_id == trip_id,
