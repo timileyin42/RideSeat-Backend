@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Rideway - The premium UK cost-sharing carpooling and ride-sharing platform. Connect with verified drivers and passengers to share travel costs.">
+  <title>Rideway — UK Cost-Sharing Ride Platform</title>
+  
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="/static/css/landing.css">
+  
+  <!-- Favicon / Brand Styling -->
+  <link rel="icon" type="image/png" href="/static/images/Frame%202147226433.png">
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header class="header">
+    <div class="nav-container">
+      <a href="/" class="logo">
+        Rideway<span class="logo-dot"></span>
+      </a>
+      <nav class="nav-links">
+        <a href="#features" class="nav-link">Features</a>
+        <a href="#booking" class="nav-link">How it Works</a>
+        <a href="#developers" class="nav-link">Developers</a>
+      </nav>
+      <!-- Simple mobile navigation indicator -->
+      <button class="nav-toggle" aria-label="Toggle Menu">
+        <span style="display:block; width:24px; height:2px; background:var(--dark-indigo); margin-bottom:5px;"></span>
+        <span style="display:block; width:24px; height:2px; background:var(--dark-indigo); margin-bottom:5px;"></span>
+        <span style="display:block; width:24px; height:2px; background:var(--dark-indigo);"></span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="hero-content">
+        <div class="hero-tagline">
+          <span style="color:#10b981;">●</span> UK Cost-Sharing Platform
+        </div>
+        <h1 class="hero-title">
+          Travel together.<br>
+          <span>Share the cost.</span>
+        </h1>
+        <p class="hero-description">
+          Rideway connects drivers with spare seats to passengers heading the same way. Reduce travel expenses, reduce carbon footprints, and enjoy a safer, verified carpooling experience across the UK.
+        </p>
+        <div class="hero-actions">
+          <a href="#download" class="btn-primary">Download Rideway App</a>
+          <a href="#features" class="btn-secondary">Explore Features</a>
+        </div>
+        <div class="hero-stats">
+          <div class="stat-item">
+            <span class="stat-num">100%</span>
+            <span class="stat-desc">DVLA Verified Drivers</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-num">£0</span>
+            <span class="stat-desc">Hidden Charges</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-num">Secured</span>
+            <span class="stat-desc">Stripe Escrow Payments</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="hero-visual">
+        <div class="hero-visual-bg"></div>
+        <div class="phone-mockup-wrapper">
+          <div class="phone-mockup">
+            <!-- App screenshot flow image -->
+            <img src="/static/images/image%2014.png" alt="Rideway App User Interface Screenshot">
+          </div>
+          <!-- Floating Badge 1 -->
+          <div class="floating-badge floating-badge-1">
+            <div class="badge-icon">🛡️</div>
+            <div class="badge-text">
+              <h4>DVLA Checked</h4>
+              <p>UK Licence Verified</p>
+            </div>
+          </div>
+          <!-- Floating Badge 2 -->
+          <div class="floating-badge floating-badge-2">
+            <div class="badge-icon">💳</div>
+            <div class="badge-text">
+              <h4>Direct Payouts</h4>
+              <p>Powered by Stripe</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features-section">
+      <div class="section-header">
+        <span class="section-label">Features</span>
+        <h2 class="section-title">Designed for Seamless Rides</h2>
+        <p class="section-desc">Whether you are behind the wheel or booking a seat, Rideway provides robust tools for a smooth cost-sharing experience.</p>
+      </div>
+
+      <div class="features-grid">
+        <!-- Passenger Card -->
+        <div class="feature-card">
+          <div class="feature-icon-wrapper">🚗</div>
+          <h3>For Drivers</h3>
+          <p>Offset your driving costs easily. Post your trip details, vehicle details, available seats, and price in just a few taps.</p>
+          <ul class="feature-list">
+            <li>Post trips with customized pricing per seat</li>
+            <li>Register and manage multiple vehicles</li>
+            <li>Accept or reject passenger booking requests</li>
+            <li>Instant direct Stripe payouts after trip completion</li>
+          </ul>
+        </div>
+
+        <!-- Driver Card -->
+        <div class="feature-card">
+          <div class="feature-icon-wrapper">📍</div>
+          <h3>For Passengers</h3>
+          <p>Find affordable travel routes across the UK. Search trips by city, compare driver ratings, and secure your booking instantly.</p>
+          <ul class="feature-list">
+            <li>Search trips by origin, destination, and date</li>
+            <li>In-app direct messaging with your driver</li>
+            <li>Book individual or multiple seats securely</li>
+            <li>Escrow payments to protect your money</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Search & Booking Section -->
+    <section id="booking" class="kyc-section">
+      <div class="kyc-image-wrapper">
+        <div class="kyc-image">
+          <!-- Illustration / route search mockup -->
+          <img src="/static/images/rideway_search_mockup.png" alt="Rideway Trip Search and Route Mapping Mockup">
+        </div>
+      </div>
+      <div class="kyc-content">
+        <h2>Find Your Perfect Ride<br><span style="color:var(--primary);">Seamless & Smart Search</span></h2>
+        <p>
+          Getting from point A to B has never been easier. Use our interactive map and list search to find a ride that matches your route, budget, and schedule.
+        </p>
+        <div class="kyc-steps">
+          <div class="kyc-step">
+            <div class="kyc-num">1</div>
+            <div class="kyc-step-content">
+              <h4>Enter Your Route</h4>
+              <p>Specify your start point and destination in the UK. Rideway immediately maps out the route and calculates potential travel corridors.</p>
+            </div>
+          </div>
+          <div class="kyc-step">
+            <div class="kyc-num">2</div>
+            <div class="kyc-step-content">
+              <h4>Compare Verified Drivers</h4>
+              <p>View profiles of cost-sharing drivers heading along your route. Review prices per seat, available vehicle models, and driver ratings.</p>
+            </div>
+          </div>
+          <div class="kyc-step">
+            <div class="kyc-num">3</div>
+            <div class="kyc-step-content">
+              <h4>Book with Escrow</h4>
+              <p>Reserve your seat with complete peace of mind. Payment is processed securely via Stripe and held in escrow until the trip is successfully completed.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Developer Section -->
+    <section id="developers" class="dev-section">
+      <div class="dev-container">
+        <div class="dev-content">
+          <h2 class="section-title">Built by Developers, for Developers</h2>
+          <p>
+            Rideway is powered by a robust, secure FastAPI backend. All endpoints are fully documented and easily extensible. Access our open APIs to build custom integrations.
+          </p>
+          <div class="dev-actions">
+            <a href="/docs" class="btn-primary">Interactive Swagger Docs</a>
+            <a href="/redoc" class="btn-outline-white">ReDoc API Specifications</a>
+          </div>
+        </div>
+        <div class="terminal-card">
+          <div class="terminal-header">
+            <div class="terminal-dot dot-red"></div>
+            <div class="terminal-dot dot-yellow"></div>
+            <div class="terminal-dot dot-green"></div>
+          </div>
+          <div class="terminal-body">
+            <span class="comment"># Verify your connection to the Rideway API</span><br>
+            <span class="command">$ curl https://api.rideway.co.uk/health</span><br>
+            <span class="output">{</span><br>
+            <span class="output">&nbsp;&nbsp;"status": "ok"</span><br>
+            <span class="output">}</span><br><br>
+            <span class="comment"># Search available trips programmatically</span><br>
+            <span class="command">$ curl -X GET "https://api.rideway.co.uk/api/v1/trips/search?origin_city=London"</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Call To Action -->
+    <section id="download" class="cta-section">
+      <div class="cta-container">
+        <h2>Ready to hit the road?</h2>
+        <p>Download the Rideway mobile app today for iOS or Android and start sharing costs and meeting new travel companions.</p>
+        <div style="display:flex; justify-content:center; gap:16px; flex-wrap:wrap;">
+          <a href="#" class="btn-secondary" style="background:#fff; color:var(--dark-indigo); border:none;">App Store</a>
+          <a href="#" class="btn-secondary" style="background:#fff; color:var(--dark-indigo); border:none;">Google Play</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-container">
+      <div class="footer-copy">
+        &copy; 2026 Rideway cost-sharing ride platform. All rights reserved.
+      </div>
+      <div class="footer-links">
+        <a href="/docs" class="footer-link">Swagger Docs</a>
+        <a href="/redoc" class="footer-link">ReDoc</a>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

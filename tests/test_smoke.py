@@ -177,7 +177,8 @@ class TestRoot:
     def test_root(self, client):
         r = client.get("/")
         assert r.status_code == 200
-        assert "docs" in r.json()
+        assert b"Rideway" in r.content
+        assert b"Cost-Sharing" in r.content
 
     def test_health(self, client):
         r = client.get("/health")

@@ -2,7 +2,10 @@
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from pathlib import Path
 
 from app.api.admin_web import router as admin_web_router
 from app.api.v1.router import api_router
@@ -39,9 +42,12 @@ def create_app() -> FastAPI:
     async def http_exception_handler(request: Request, exc: HTTPException):
         return JSONResponse(status_code=exc.status_code, content={"data": None, "error": exc.detail})
 
-    @app.get("/")
-    def root():
-        return {"message": "Welcome to RideSeat Backend", "docs": "/docs", "redoc": "/redoc"}
+    templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
+    app.mount("/static", StaticFiles(directory=str(Path(__file__).resolve().parent / "static")), name="static")
+
+    @app.get("/", response_class=HTMLResponse)
+    def root(request: Request):
+        return templates.TemplateResponse(request=request, name="landing.html")
     @app.get("/health")
     def health():
         return {"status": "ok"}
