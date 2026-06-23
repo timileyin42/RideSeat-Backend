@@ -3,7 +3,7 @@
 from uuid import UUID
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.constants import BookingStatus
 from app.models.booking import Booking
@@ -15,14 +15,10 @@ class BookingRepository:
         return db.get(Booking, booking_id)
 
     def list_by_user(self, db: Session, user_id: UUID) -> list[Booking]:
-        # Get all bookings where user is passenger OR driver (via trip)
         stmt = (
             select(Booking)
-            .outerjoin(Trip, Trip.id == Booking.trip_id)
-            .where(
-                (Booking.passenger_id == user_id) | 
-                (Trip.driver_id == user_id)
-            )
+            .options(selectinload(Booking.trip).selectinload(Trip.driver))
+            .where(Booking.passenger_id == user_id)
             .order_by(Booking.created_at.desc())
         )
         return list(db.execute(stmt).scalars().all())

@@ -8,6 +8,27 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.core.constants import BookingStatus
 
 
+class DriverSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    first_name: str | None = None
+    last_name: str | None = None
+    profile_photo_url: str | None = None
+    rating_avg: float = 0
+    rating_count: int = 0
+
+
+class TripSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    origin_city: str
+    destination_city: str
+    departure_time: datetime
+    driver: DriverSummary | None = None
+
+
 class BookingCreate(BaseModel):
     model_config = ConfigDict(json_schema_extra={
         "example": {
@@ -46,3 +67,4 @@ class BookingResponse(BaseModel):
     status: BookingStatus
     total_amount: float
     created_at: datetime
+    trip: TripSummary | None = None
