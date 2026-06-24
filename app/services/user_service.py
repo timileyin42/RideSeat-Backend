@@ -313,3 +313,6 @@ class UserService:
         years = today.year - value.year - ((today.month, today.day) < (value.month, value.day))
         if years < 18:
             raise ValueError("Age must be 18 or older")
+
+    def delete_account(self, db: Session, user: User) -> None:
+        self.user_repo.delete(db, user)

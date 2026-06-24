@@ -244,3 +244,16 @@ def get_user_phone(
         return DataResponse(data=PhoneNumberResponse(phone_number=phone_number))
     except ValueError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+
+@router.delete("/me", status_code=204)
+def delete_my_account(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    try:
+        user_service.delete_account(db, current_user)
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
