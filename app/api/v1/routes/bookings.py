@@ -82,6 +82,7 @@ def list_trip_bookings(
 
 
 @router.patch("/{booking_id}/status", response_model=DataResponse[BookingResponse])
+@router.post("/{booking_id}/status", response_model=DataResponse[BookingResponse])
 def update_booking_status(
     booking_id: UUID,
     payload: BookingStatusUpdate,
