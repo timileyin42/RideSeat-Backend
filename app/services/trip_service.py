@@ -19,7 +19,7 @@ class TripService:
 
     def get_trip(self, db: Session, trip_id: UUID) -> dict:
         trip = self.trip_repo.get_by_id(db, trip_id)
-        if not trip or trip.is_cancelled:
+        if not trip:
             raise ValueError("Trip not found")
         return self._to_response(db, trip)
 
