@@ -5,6 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.core.constants import BookingMode
 from app.schemas.user import UserPublicResponse
 
 
@@ -27,6 +28,7 @@ class TripCreate(BaseModel):
             "vehicle_make": "Toyota",
             "vehicle_model": "Prius",
             "vehicle_color": "Silver",
+            "booking_mode": "REVIEW_REQUESTS",
             "instant_booking": False,
             "music_allowed": True,
             "pets_allowed": False,
@@ -55,6 +57,7 @@ class TripCreate(BaseModel):
     vehicle_make: str | None = Field(default=None, max_length=100)
     vehicle_model: str | None = Field(default=None, max_length=100)
     vehicle_color: str | None = Field(default=None, max_length=50)
+    booking_mode: BookingMode | None = None
     instant_booking: bool = False
     music_allowed: bool = False
     pets_allowed: bool = False
@@ -82,6 +85,14 @@ class TripCreate(BaseModel):
         # Origin and destination must differ
         if self.origin_city.strip().lower() == self.destination_city.strip().lower():
             raise ValueError("Origin and destination cities cannot be the same")
+        if self.booking_mode is not None:
+            expected_instant = self.booking_mode == BookingMode.INSTANT_BOOKING
+            if self.instant_booking != expected_instant:
+                raise ValueError("booking_mode and instant_booking must agree")
+        else:
+            self.booking_mode = (
+                BookingMode.INSTANT_BOOKING if self.instant_booking else BookingMode.REVIEW_REQUESTS
+            )
         return self
 
 
@@ -91,6 +102,7 @@ class TripUpdate(BaseModel):
             "price_per_seat": 28.00,
             "available_seats": 2,
             "notes": "Updated: stopping at Stafford services.",
+            "booking_mode": "INSTANT_BOOKING",
             "music_allowed": False,
         }
     })
@@ -113,6 +125,7 @@ class TripUpdate(BaseModel):
     vehicle_make: str | None = Field(default=None, max_length=100)
     vehicle_model: str | None = Field(default=None, max_length=100)
     vehicle_color: str | None = Field(default=None, max_length=50)
+    booking_mode: BookingMode | None = None
     instant_booking: bool | None = None
     music_allowed: bool | None = None
     pets_allowed: bool | None = None
@@ -123,6 +136,20 @@ class TripUpdate(BaseModel):
     requires_passport: bool | None = None
     stops: list | None = None
     notes: str | None = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def check_booking_mode(self) -> "TripUpdate":
+        if self.booking_mode is not None and self.instant_booking is not None:
+            expected_instant = self.booking_mode == BookingMode.INSTANT_BOOKING
+            if self.instant_booking != expected_instant:
+                raise ValueError("booking_mode and instant_booking must agree")
+        elif self.booking_mode is not None:
+            self.instant_booking = self.booking_mode == BookingMode.INSTANT_BOOKING
+        elif self.instant_booking is not None:
+            self.booking_mode = (
+                BookingMode.INSTANT_BOOKING if self.instant_booking else BookingMode.REVIEW_REQUESTS
+            )
+        return self
 
 
 class TripResponse(BaseModel):
@@ -150,6 +177,7 @@ class TripResponse(BaseModel):
     vehicle_make: str
     vehicle_model: str
     vehicle_color: str
+    booking_mode: BookingMode
     instant_booking: bool
     music_allowed: bool
     pets_allowed: bool

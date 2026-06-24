@@ -2,7 +2,7 @@ from datetime import timedelta
 
 import pytest
 
-from app.core.constants import BookingStatus, UserRole
+from app.core.constants import BookingMode, BookingStatus, UserRole
 from app.core.security import hash_password
 from app.models.booking import Booking
 from app.models.trip import Trip
@@ -119,6 +119,83 @@ def test_create_trip_rejects_past_departure(db_session):
 
     with pytest.raises(ValueError):
         service.create_trip(db_session, driver, data)
+
+
+def test_create_trip_accepts_review_requests_booking_mode(db_session):
+    user_repo = UserRepository()
+    trip_repo = TripRepository()
+    service = TripService(trip_repo)
+
+    driver = user_repo.create(
+        db_session,
+        User(
+            first_name="Driver",
+            last_name="Manual",
+            email="driver-manual@example.com",
+            password_hash=hash_password("pass1234"),
+            role=UserRole.PASSENGER,
+            is_email_verified=True,
+        ),
+    )
+    db_session.commit()
+
+    data = {
+        "origin_city": "Abuja",
+        "destination_city": "Kaduna",
+        "departure_time": now_utc() + timedelta(hours=3),
+        "available_seats": 2,
+        "price_per_seat": 15,
+        "vehicle_make": "Honda",
+        "vehicle_model": "Civic",
+        "vehicle_color": "Black",
+        "booking_mode": BookingMode.REVIEW_REQUESTS,
+    }
+
+    created = service.create_trip(db_session, driver, data)
+
+    assert created["booking_mode"] == BookingMode.REVIEW_REQUESTS
+    assert created["instant_booking"] is False
+
+
+def test_update_trip_accepts_instant_booking_mode(db_session):
+    user_repo = UserRepository()
+    trip_repo = TripRepository()
+    service = TripService(trip_repo)
+
+    driver = user_repo.create(
+        db_session,
+        User(
+            first_name="Driver",
+            last_name="Instant",
+            email="driver-instant@example.com",
+            password_hash=hash_password("pass1234"),
+            role=UserRole.DRIVER,
+            is_email_verified=True,
+        ),
+    )
+    db_session.commit()
+
+    trip = trip_repo.create(
+        db_session,
+        Trip(
+            driver_id=driver.id,
+            origin_city="Lagos",
+            destination_city="Ibadan",
+            departure_time=now_utc() + timedelta(hours=4),
+            available_seats=3,
+            price_per_seat=10,
+            vehicle_make="Toyota",
+            vehicle_model="Corolla",
+            vehicle_color="White",
+            instant_booking=False,
+        ),
+    )
+    db_session.commit()
+
+    updated = service.update_trip(db_session, driver, trip.id, {"booking_mode": BookingMode.INSTANT_BOOKING})
+
+    assert updated["booking_mode"] == BookingMode.INSTANT_BOOKING
+    assert updated["instant_booking"] is True
 
 
 def test_update_trip_cannot_reduce_below_confirmed(db_session):

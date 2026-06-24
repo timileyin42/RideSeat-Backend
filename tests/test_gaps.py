@@ -9,7 +9,7 @@ from datetime import timedelta
 
 import pytest
 
-from app.core.constants import BookingStatus, IdentityVerificationStatus, UserRole
+from app.core.constants import BookingMode, BookingStatus, IdentityVerificationStatus, UserRole
 from app.core.security import hash_password
 from app.models.booking import Booking
 from app.models.trip import Trip
@@ -132,6 +132,7 @@ def test_instant_booking_flag_defaults_false(db_session):
     db_session.commit()
 
     assert result["instant_booking"] is False
+    assert result["booking_mode"] == BookingMode.REVIEW_REQUESTS
 
 
 def test_instant_booking_creates_confirmed_booking(db_session):
@@ -558,3 +559,19 @@ def test_trip_create_schema_accepts_manual_vehicle_fields():
         vehicle_color="Black",
     )
     assert data.vehicle_make == "Toyota"
+
+
+def test_trip_create_schema_accepts_booking_mode_only():
+    data = TripCreate(
+        origin_city="Lagos",
+        destination_city="Abuja",
+        departure_time=now_utc() + timedelta(hours=5),
+        available_seats=3,
+        price_per_seat=20,
+        vehicle_make="Toyota",
+        vehicle_model="Camry",
+        vehicle_color="Black",
+        booking_mode=BookingMode.INSTANT_BOOKING,
+    )
+    assert data.instant_booking is True
+    assert data.booking_mode == BookingMode.INSTANT_BOOKING

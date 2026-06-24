@@ -5,6 +5,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.core.constants import BookingMode
 from app.models.trip import Trip
 from app.models.user import User
 from app.repositories.trip_repo import TripRepository
@@ -23,6 +24,7 @@ class TripService:
         return self._to_response(db, trip)
 
     def create_trip(self, db: Session, driver: User, data: dict) -> dict:
+        data = self._normalize_booking_mode(data)
         if ensure_utc(data["departure_time"]) <= now_utc():
             raise ValueError("Trip cannot be in the past")
         trip = Trip(driver_id=driver.id, **data)
@@ -30,6 +32,7 @@ class TripService:
         return self._to_response(db, created)
 
     def update_trip(self, db: Session, driver: User, trip_id: UUID, updates: dict) -> dict:
+        updates = self._normalize_booking_mode(updates)
         trip = self.trip_repo.get_by_id(db, trip_id)
         if not trip or trip.is_cancelled:
             raise ValueError("Trip not found")
@@ -85,6 +88,7 @@ class TripService:
         confirmed_seats = self.trip_repo.count_confirmed_seats(db, trip.id)
         seats_remaining = max(trip.available_seats - confirmed_seats, 0)
         pending_count = self.trip_repo.count_pending_bookings(db, trip.id)
+        booking_mode = BookingMode.INSTANT_BOOKING if trip.instant_booking else BookingMode.REVIEW_REQUESTS
         return {
             "id": trip.id,
             "driver": trip.driver,
@@ -108,6 +112,7 @@ class TripService:
             "vehicle_make": trip.vehicle_make,
             "vehicle_model": trip.vehicle_model,
             "vehicle_color": trip.vehicle_color,
+            "booking_mode": booking_mode,
             "instant_booking": trip.instant_booking,
             "music_allowed": trip.music_allowed,
             "pets_allowed": trip.pets_allowed,
@@ -121,3 +126,10 @@ class TripService:
             "is_cancelled": trip.is_cancelled,
             "pending_booking_count": pending_count,
         }
+
+    def _normalize_booking_mode(self, data: dict) -> dict:
+        normalized = dict(data)
+        booking_mode = normalized.pop("booking_mode", None)
+        if booking_mode is not None:
+            normalized["instant_booking"] = booking_mode == BookingMode.INSTANT_BOOKING
+        return normalized
