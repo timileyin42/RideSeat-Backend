@@ -40,6 +40,7 @@ class BookingStatus(StrEnum):
     CONFIRMED = "CONFIRMED"
     CANCELLED = "CANCELLED"
     COMPLETED = "COMPLETED"
+    REJECTED = "REJECTED"
 
 
 class BookingMode(StrEnum):

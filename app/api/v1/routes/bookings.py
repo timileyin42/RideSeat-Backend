@@ -68,6 +68,19 @@ def list_driver_bookings(
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
+@router.get("/trip/{trip_id}", response_model=DataResponse[list[BookingResponse]])
+def list_trip_bookings(
+    trip_id: UUID,
+    status: BookingStatus | None = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    try:
+        return DataResponse(data=booking_service.list_bookings_for_trip(db, current_user, trip_id, status=status))
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+
 @router.patch("/{booking_id}/status", response_model=DataResponse[BookingResponse])
 def update_booking_status(
     booking_id: UUID,

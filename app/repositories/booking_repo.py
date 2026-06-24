@@ -59,8 +59,18 @@ class BookingRepository:
         db.flush()
         return booking
 
-    def list_by_trip_and_status(self, db: Session, trip_id: UUID, status: BookingStatus) -> list[Booking]:
-        stmt = select(Booking).where(Booking.trip_id == trip_id, Booking.status == status)
+    def list_by_trip_and_status(self, db: Session, trip_id: UUID, status: BookingStatus | None = None) -> list[Booking]:
+        stmt = (
+            select(Booking)
+            .options(
+                selectinload(Booking.trip).selectinload(Trip.driver),
+                selectinload(Booking.passenger)
+            )
+            .where(Booking.trip_id == trip_id)
+        )
+        if status is not None:
+            stmt = stmt.where(Booking.status == status)
+        stmt = stmt.order_by(Booking.created_at.desc())
         return list(db.execute(stmt).scalars().all())
 
     def list_by_driver(self, db: Session, driver_id: UUID, status: BookingStatus | None = None) -> list[Booking]:

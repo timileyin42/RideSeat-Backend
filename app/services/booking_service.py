@@ -114,6 +114,17 @@ class BookingService:
                 f"A booking for your trip from {trip.origin_city} to {trip.destination_city} was cancelled.",
             )
 
+    def _handle_rejection(self, db: Session, booking: Booking, trip) -> None:
+        passenger = self.user_repo.get_by_id(db, booking.passenger_id)
+        if passenger:
+            self.notification_service.create_notification(
+                db,
+                passenger.id,
+                NotificationType.BOOKING_CANCELLED,
+                "Booking rejected",
+                f"Your booking request for the trip from {trip.origin_city} to {trip.destination_city} was rejected.",
+            )
+
     def create_booking(self, db: Session, passenger: User, trip_id: UUID, seats: int) -> Booking:
         trip = self.trip_repo.get_by_id_for_update(db, trip_id)
         if not trip or trip.is_cancelled:
@@ -184,6 +195,20 @@ class BookingService:
     ) -> list[Booking]:
         return self.booking_repo.list_by_driver(db, driver.id, status=status)
 
+    def list_bookings_for_trip(
+        self,
+        db: Session,
+        driver: User,
+        trip_id: UUID,
+        status: BookingStatus | None = None,
+    ) -> list[Booking]:
+        trip = self.trip_repo.get_by_id(db, trip_id)
+        if not trip:
+            raise ValueError("Trip not found")
+        if trip.driver_id != driver.id:
+            raise ValueError("Only the trip driver can view bookings for this trip")
+        return self.booking_repo.list_by_trip_and_status(db, trip_id, status=status)
+
     def list_all_bookings(self, db: Session, actor: User, limit: int | None = None, offset: int | None = None) -> list[Booking]:
         if not actor.is_admin:
             raise ValueError("Admin privileges required")
@@ -214,12 +239,19 @@ class BookingService:
                 raise ValueError("Only driver can complete booking")
             if ensure_utc(trip.departure_time) > now_utc():
                 raise ValueError("Cannot complete booking before trip departure")
+        if status == BookingStatus.REJECTED:
+            if trip.driver_id != actor.id:
+                raise ValueError("Only driver can reject booking")
+            if booking.status != BookingStatus.PENDING:
+                raise ValueError("Can only reject pending bookings")
         booking.status = status
         updated = self.booking_repo.update(db, booking)
         if status == BookingStatus.COMPLETED:
             self._handle_completion(db, booking, trip)
         if status == BookingStatus.CANCELLED:
             self._handle_cancellation(db, booking, trip, actor)
+        if status == BookingStatus.REJECTED:
+            self._handle_rejection(db, booking, trip)
         return updated
 
     def resolve_dispute(self, db: Session, actor: User, booking_id: UUID, status: BookingStatus) -> Booking:

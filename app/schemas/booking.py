@@ -36,7 +36,11 @@ class TripSummary(BaseModel):
     id: UUID
     origin_city: str
     destination_city: str
+    origin_address: str | None = None
+    destination_address: str | None = None
     departure_time: datetime
+    available_seats: int
+    price_per_seat: float
     driver: DriverSummary | None = None
 
 
