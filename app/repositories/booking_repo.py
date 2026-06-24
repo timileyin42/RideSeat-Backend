@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.constants import BookingStatus
 from app.models.booking import Booking
 from app.models.trip import Trip
+from app.models.user import User
 
 
 class BookingRepository:
@@ -17,7 +18,10 @@ class BookingRepository:
     def list_by_user(self, db: Session, user_id: UUID) -> list[Booking]:
         stmt = (
             select(Booking)
-            .options(selectinload(Booking.trip).selectinload(Trip.driver))
+            .options(
+                selectinload(Booking.trip).selectinload(Trip.driver),
+                selectinload(Booking.passenger)
+            )
             .where(Booking.passenger_id == user_id)
             .order_by(Booking.created_at.desc())
         )
@@ -60,7 +64,15 @@ class BookingRepository:
         return list(db.execute(stmt).scalars().all())
 
     def list_by_driver(self, db: Session, driver_id: UUID, status: BookingStatus | None = None) -> list[Booking]:
-        stmt = select(Booking).join(Trip, Trip.id == Booking.trip_id).where(Trip.driver_id == driver_id)
+        stmt = (
+            select(Booking)
+            .join(Trip, Trip.id == Booking.trip_id)
+            .options(
+                selectinload(Booking.trip).selectinload(Trip.driver),
+                selectinload(Booking.passenger)
+            )
+            .where(Trip.driver_id == driver_id)
+        )
         if status is not None:
             stmt = stmt.where(Booking.status == status)
         stmt = stmt.order_by(Booking.created_at.desc())
