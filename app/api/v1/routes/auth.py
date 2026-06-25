@@ -37,6 +37,9 @@ def register(
             db,
             email=payload.email,
             password=payload.password,
+            first_name=payload.first_name,
+            last_name=payload.last_name,
+            date_of_birth=payload.date_of_birth,
         )
         db.commit()
         return DataResponse(data=AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user))

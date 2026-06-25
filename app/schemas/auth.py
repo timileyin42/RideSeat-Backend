@@ -10,11 +10,17 @@ class RegisterRequest(BaseModel):
         "example": {
             "email": "james.harrison@example.com",
             "password": "SecurePass1!",
+            "first_name": "James",
+            "last_name": "Harrison",
+            "date_of_birth": "1990-05-15",
         }
     })
 
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
+    first_name: str | None = Field(default=None, max_length=100)
+    last_name: str | None = Field(default=None, max_length=100)
+    date_of_birth: str | None = None
 
 
 class RegisterResponse(BaseModel):

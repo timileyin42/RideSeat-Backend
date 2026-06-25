@@ -26,14 +26,30 @@ class AuthService:
         db: Session,
         email: str,
         password: str,
+        first_name: str | None = None,
+        last_name: str | None = None,
+        date_of_birth: str | None = None,
     ) -> tuple[User, str, str]:
         existing = self.user_repo.get_by_email(db, email)
         if existing:
             raise ValueError("Email already registered")
+        
+        # Parse date_of_birth if provided
+        parsed_dob = None
+        if date_of_birth:
+            from datetime import datetime
+            try:
+                parsed_dob = datetime.strptime(date_of_birth, "%Y-%m-%d").date()
+            except ValueError:
+                raise ValueError("Invalid date format. Please use YYYY-MM-DD.")
+        
         otp_code = f"{secrets.randbelow(1000000):06d}"
         user = User(
             email=email,
             password_hash=hash_password(password),
+            first_name=first_name,
+            last_name=last_name,
+            date_of_birth=parsed_dob,
             is_email_verified=False,
         )
         saved = self.user_repo.create(db, user)

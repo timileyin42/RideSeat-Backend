@@ -2,11 +2,31 @@
 
 from datetime import datetime, timezone
 from uuid import UUID
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.core.constants import BookingMode
 from app.schemas.user import UserPublicResponse
+
+
+class StopPoint(BaseModel):
+    """A stop point along a trip route."""
+    model_config = ConfigDict(from_attributes=True, json_schema_extra={
+        "example": {
+            "city": "Birmingham",
+            "address": "Birmingham New Street Station",
+            "lat": 52.4776,
+            "lng": -1.8964,
+            "stop_order": 1,
+        }
+    })
+
+    city: str = Field(..., min_length=1, max_length=120)
+    address: str | None = Field(default=None, max_length=255)
+    lat: float | None = None
+    lng: float | None = None
+    stop_order: int = Field(..., ge=1, description="Order of the stop in the route, starting from 1")
 
 
 class TripCreate(BaseModel):
@@ -35,6 +55,9 @@ class TripCreate(BaseModel):
             "smoking_allowed": False,
             "air_conditioning": True,
             "luggage_allowed": True,
+            "stops": [
+                {"city": "Birmingham", "address": "Birmingham New Street", "lat": 52.4776, "lng": -1.8964, "stop_order": 1},
+            ],
             "notes": "Happy to stop at services on the M6.",
         }
     })
@@ -66,7 +89,7 @@ class TripCreate(BaseModel):
     minimal_luggage: bool = False
     luggage_allowed: bool = False
     requires_passport: bool = False
-    stops: list | None = None
+    stops: list[StopPoint] | None = None
     notes: str | None = Field(default=None, max_length=500)
 
     @model_validator(mode="after")
@@ -134,7 +157,7 @@ class TripUpdate(BaseModel):
     minimal_luggage: bool | None = None
     luggage_allowed: bool | None = None
     requires_passport: bool | None = None
-    stops: list | None = None
+    stops: list[StopPoint] | None = None
     notes: str | None = Field(default=None, max_length=500)
 
     @model_validator(mode="after")
@@ -186,7 +209,7 @@ class TripResponse(BaseModel):
     minimal_luggage: bool
     luggage_allowed: bool
     requires_passport: bool
-    stops: list | None
+    stops: list[StopPoint] | None
     notes: str | None
     is_cancelled: bool
     pending_booking_count: int = 0

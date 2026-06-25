@@ -2,10 +2,30 @@
 
 from datetime import datetime
 from uuid import UUID
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.constants import BookingStatus
+
+
+class StopPoint(BaseModel):
+    """A stop point along a trip route."""
+    model_config = ConfigDict(from_attributes=True, json_schema_extra={
+        "example": {
+            "city": "Birmingham",
+            "address": "Birmingham New Street Station",
+            "lat": 52.4776,
+            "lng": -1.8964,
+            "stop_order": 1,
+        }
+    })
+
+    city: str = Field(..., min_length=1, max_length=120)
+    address: str | None = Field(default=None, max_length=255)
+    lat: float | None = None
+    lng: float | None = None
+    stop_order: int = Field(..., ge=1, description="Order of the stop in the route, starting from 1")
 
 
 class PassengerSummary(BaseModel):
@@ -42,6 +62,7 @@ class TripSummary(BaseModel):
     available_seats: int
     price_per_seat: float
     driver: DriverSummary | None = None
+    stops: list[StopPoint] | None = None
 
 
 class BookingCreate(BaseModel):
