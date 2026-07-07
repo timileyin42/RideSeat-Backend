@@ -1,11 +1,14 @@
 """Payment service."""
 
+import logging
 import stripe
 import time
 from datetime import timedelta
 from threading import Lock
 from sqlalchemy.orm import Session
 from uuid import UUID
+
+import redis
 
 from app.core.config import get_settings
 from app.core.celery_app import celery_app
@@ -17,6 +20,17 @@ from app.repositories.payment_repo import PaymentRepository
 from app.repositories.trip_repo import TripRepository
 from app.repositories.user_repo import UserRepository
 from app.utils.datetime import now_utc
+
+logger = logging.getLogger(__name__)
+
+_WEBHOOK_DEDUP_TTL = 86_400  # 24 hours — matches Stripe's retry window
+_WEBHOOK_KEY = "rideway:stripe_event:{}"
+
+
+def _redis_client() -> redis.Redis:
+    settings = get_settings()
+    base_url = settings.celery_broker_url.rsplit("/", 1)[0]
+    return redis.from_url(f"{base_url}/3", decode_responses=True)
 
 
 class CircuitBreaker:
@@ -61,19 +75,33 @@ class PaymentService:
         self.trip_repo = trip_repo
         self.user_repo = user_repo
 
-    def create_intent_background(self, db: Session, booking_id: UUID, actor_id: UUID, background_tasks) -> Payment:
-        if not get_settings().stripe_secret_key:
+    def _configured_stripe(self) -> None:
+        settings = get_settings()
+        if not settings.stripe_secret_key:
             raise ValueError("Payments are not yet enabled")
+        if not payment_circuit_breaker.allow():
+            raise ValueError("Payment service temporarily unavailable, try again shortly")
+        stripe.api_key = settings.stripe_secret_key
+        # SDK auto-retries idempotent requests on network errors (before our circuit breaker fires)
+        stripe.max_network_retries = 2
+        # Fail fast — don't hold a request thread for Stripe's default 80s timeout
+        stripe.timeout = 30
+
+    def create_payment_intent(self, db: Session, booking_id: UUID, actor_id: UUID) -> Payment:
+        """Create a Stripe PaymentIntent synchronously and return client_secret immediately."""
+        self._configured_stripe()
         booking = self.booking_repo.get_by_id(db, booking_id)
         if not booking:
             raise ValueError("Booking not found")
         if booking.passenger_id != actor_id:
             raise ValueError("Not allowed to pay for this booking")
+
         existing = self.payment_repo.get_by_booking(db, booking_id)
         if existing:
-            if existing.stripe_payment_intent_id is None:
-                celery_app.send_task("app.tasks.payment_tasks.process_payment_intent", args=[str(existing.id)])
-            return existing
+            if existing.stripe_client_secret:
+                return existing
+            return self._sync_stripe_intent(db, existing)
+
         amount = float(booking.total_amount)
         platform_fee = round(amount * PLATFORM_FEE_PERCENT, 2)
         payout = round(amount - platform_fee, 2)
@@ -83,13 +111,30 @@ class PaymentService:
             platform_fee=platform_fee,
             payout_amount=payout,
             status=PaymentStatus.REQUIRES_PAYMENT_METHOD,
-            stripe_payment_intent_id=None,
         )
         saved = self.payment_repo.create(db, payment)
-        celery_app.send_task("app.tasks.payment_tasks.process_payment_intent", args=[str(saved.id)])
-        return saved
+        return self._sync_stripe_intent(db, saved)
+
+    def _sync_stripe_intent(self, db: Session, payment: Payment) -> Payment:
+        try:
+            intent = stripe.PaymentIntent.create(
+                amount=int(float(payment.amount) * 100),
+                currency=CURRENCY,
+                metadata={"booking_id": str(payment.booking_id)},
+                idempotency_key=f"payment_intent:{payment.id}",
+            )
+            payment.stripe_payment_intent_id = intent.id
+            payment.stripe_client_secret = intent.client_secret
+            payment.status = PaymentStatus.REQUIRES_PAYMENT_METHOD
+            self.payment_repo.update(db, payment)
+            payment_circuit_breaker.record_success()
+            return payment
+        except stripe.StripeError as exc:
+            payment_circuit_breaker.record_failure()
+            raise ValueError(f"Stripe error: {exc.user_message or str(exc)}") from exc
 
     def process_payment_intent(self, payment_id: UUID) -> None:
+        """Celery recovery: fill in missing PI for payments created before a Stripe outage."""
         db = create_db_session()
         try:
             payment = self.payment_repo.get_by_id(db, payment_id)
@@ -101,20 +146,10 @@ class PaymentService:
             if not settings.stripe_secret_key:
                 return
             stripe.api_key = settings.stripe_secret_key
-            intent = stripe.PaymentIntent.create(
-                amount=int(float(payment.amount) * 100),
-                currency=CURRENCY,
-                metadata={"booking_id": str(payment.booking_id)},
-                idempotency_key=f"payment_intent:{payment.id}",
-            )
-            payment.stripe_payment_intent_id = intent.id
-            payment.status = PaymentStatus.REQUIRES_PAYMENT_METHOD
-            self.payment_repo.update(db, payment)
+            self._sync_stripe_intent(db, payment)
             db.commit()
-            payment_circuit_breaker.record_success()
         except Exception:
             db.rollback()
-            payment_circuit_breaker.record_failure()
         finally:
             db.close()
 
@@ -185,13 +220,8 @@ class PaymentService:
             raise ValueError("Trip not found")
         driver = self.user_repo.get_by_id(db, trip.driver_id)
         if not driver or not driver.payment_details:
-            raise ValueError("Driver payment details missing")
-        if not payment_circuit_breaker.allow():
-            raise ValueError("Payment service unavailable")
-        settings = get_settings()
-        if not settings.stripe_secret_key:
-            raise ValueError("Payments are not yet enabled")
-        stripe.api_key = settings.stripe_secret_key
+            raise ValueError("Driver has not connected their payout account")
+        self._configured_stripe()
         try:
             transfer = stripe.Transfer.create(
                 amount=int(float(payment.payout_amount) * 100),
@@ -200,32 +230,129 @@ class PaymentService:
                 metadata={"booking_id": str(booking_id)},
                 idempotency_key=f"payout:{booking_id}",
             )
-        except Exception as exc:
+            payment_circuit_breaker.record_success()
+        except stripe.StripeError as exc:
             payment_circuit_breaker.record_failure()
-            raise ValueError("Payout failed") from exc
+            raise ValueError(f"Payout failed: {exc.user_message or str(exc)}") from exc
         payment.stripe_transfer_id = transfer.id
-        updated = self.payment_repo.update(db, payment)
-        payment_circuit_breaker.record_success()
-        return updated
+        return self.payment_repo.update(db, payment)
 
     def handle_webhook(self, db: Session, payload: bytes, sig_header: str) -> Payment:
         settings = get_settings()
         if not settings.stripe_webhook_secret:
             raise ValueError("Payments are not yet enabled")
-        event = stripe.Webhook.construct_event(payload, sig_header, settings.stripe_webhook_secret)
+        try:
+            event = stripe.Webhook.construct_event(payload, sig_header, settings.stripe_webhook_secret)
+        except stripe.SignatureVerificationError as exc:
+            raise ValueError("Invalid webhook signature") from exc
+
+        # Deduplicate: Stripe delivers at-least-once; same event_id within 24h is a replay
+        event_id = event["id"]
+        try:
+            r = _redis_client()
+            key = _WEBHOOK_KEY.format(event_id)
+            already_processed = not r.set(key, "1", nx=True, ex=_WEBHOOK_DEDUP_TTL)
+            if already_processed:
+                logger.info("Duplicate Stripe webhook ignored", extra={"event_id": event_id})
+                raise ValueError(f"Duplicate event: {event_id}")
+        except redis.RedisError:
+            # Redis unavailable — log and continue; better to double-process than to drop
+            logger.warning("Redis unavailable for webhook dedup, processing anyway", extra={"event_id": event_id})
+
+        event_type = event["type"]
         data_object = event["data"]["object"]
-        if data_object.get("metadata") and "booking_id" in data_object["metadata"]:
-            booking_id = UUID(data_object["metadata"]["booking_id"])
-            payment = self.payment_repo.get_by_booking(db, booking_id)
-            if not payment:
-                raise ValueError("Payment not found")
-            status = data_object.get("status", "").upper()
-            if status == "SUCCEEDED":
-                payment.status = PaymentStatus.SUCCEEDED
-            elif status == "PROCESSING":
-                payment.status = PaymentStatus.PROCESSING
-            else:
-                payment.status = PaymentStatus.FAILED
+
+        if event_type not in (
+            "payment_intent.succeeded",
+            "payment_intent.processing",
+            "payment_intent.payment_failed",
+            "payment_intent.canceled",
+        ):
+            raise ValueError(f"Unhandled event type: {event_type}")
+
+        booking_id_str = (data_object.get("metadata") or {}).get("booking_id")
+        if not booking_id_str:
+            raise ValueError("No booking_id in webhook metadata")
+
+        booking_id = UUID(booking_id_str)
+        payment = self.payment_repo.get_by_booking(db, booking_id)
+        if not payment:
+            raise ValueError("Payment not found")
+
+        if event_type == "payment_intent.succeeded":
+            payment.status = PaymentStatus.SUCCEEDED
             payment.stripe_charge_id = data_object.get("latest_charge")
-            return self.payment_repo.update(db, payment)
-        raise ValueError("Invalid webhook payload")
+            self.trigger_payout_background(booking_id)
+        elif event_type == "payment_intent.processing":
+            payment.status = PaymentStatus.PROCESSING
+        else:
+            payment.status = PaymentStatus.FAILED
+
+        return self.payment_repo.update(db, payment)
+
+    # --- Stripe Connect (driver payout onboarding) ---
+
+    def create_connect_account(self, db: Session, driver_id: UUID, return_url: str, refresh_url: str) -> dict:
+        """Create or resume a Stripe Express account for a driver, return onboarding URL."""
+        self._configured_stripe()
+        driver = self.user_repo.get_by_id(db, driver_id)
+        if not driver:
+            raise ValueError("User not found")
+
+        account_id = driver.payment_details
+        if not account_id:
+            try:
+                account = stripe.Account.create(
+                    type="express",
+                    country="GB",
+                    email=driver.email,
+                    capabilities={"transfers": {"requested": True}},
+                    metadata={"user_id": str(driver_id)},
+                )
+                account_id = account.id
+                driver.payment_details = account_id
+                self.user_repo.update(db, driver)
+                payment_circuit_breaker.record_success()
+            except stripe.StripeError as exc:
+                payment_circuit_breaker.record_failure()
+                raise ValueError(f"Stripe error: {exc.user_message or str(exc)}") from exc
+
+        try:
+            link = stripe.AccountLink.create(
+                account=account_id,
+                refresh_url=refresh_url,
+                return_url=return_url,
+                type="account_onboarding",
+            )
+            payment_circuit_breaker.record_success()
+        except stripe.StripeError as exc:
+            payment_circuit_breaker.record_failure()
+            raise ValueError(f"Stripe error: {exc.user_message or str(exc)}") from exc
+
+        return {"account_id": account_id, "onboarding_url": link.url}
+
+    def get_connect_status(self, db: Session, driver_id: UUID) -> dict:
+        """Return Stripe Connect onboarding status for the driver."""
+        self._configured_stripe()
+        driver = self.user_repo.get_by_id(db, driver_id)
+        if not driver:
+            raise ValueError("User not found")
+        if not driver.payment_details:
+            return {
+                "connected": False,
+                "charges_enabled": False,
+                "payouts_enabled": False,
+                "account_id": None,
+            }
+        try:
+            account = stripe.Account.retrieve(driver.payment_details)
+            payment_circuit_breaker.record_success()
+        except stripe.StripeError as exc:
+            payment_circuit_breaker.record_failure()
+            raise ValueError(f"Stripe error: {exc.user_message or str(exc)}") from exc
+        return {
+            "connected": account.get("charges_enabled", False),
+            "charges_enabled": account.get("charges_enabled", False),
+            "payouts_enabled": account.get("payouts_enabled", False),
+            "account_id": driver.payment_details,
+        }

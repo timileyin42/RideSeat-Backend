@@ -1,7 +1,6 @@
 """Payment schemas."""
 
 from datetime import datetime
-from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 from app.core.constants import PaymentStatus
@@ -24,6 +23,19 @@ class PaymentResponse(BaseModel):
     platform_fee: float
     payout_amount: float
     status: PaymentStatus
-    stripe_payment_intent_id: str | None
-    stripe_transfer_id: str | None
+    stripe_payment_intent_id: str | None = None
+    stripe_client_secret: str | None = None
+    stripe_transfer_id: str | None = None
     created_at: datetime
+
+
+class ConnectOnboardResponse(BaseModel):
+    account_id: str
+    onboarding_url: str
+
+
+class ConnectStatusResponse(BaseModel):
+    connected: bool
+    charges_enabled: bool
+    payouts_enabled: bool
+    account_id: str | None = None

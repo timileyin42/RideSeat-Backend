@@ -20,6 +20,7 @@ class Payment(Base):
     payout_amount: Mapped[float] = mapped_column(Numeric(10, 2))
     status: Mapped[PaymentStatus] = mapped_column(Enum(PaymentStatus))
     stripe_payment_intent_id: Mapped[str | None] = mapped_column(String(255), default=None)
+    stripe_client_secret: Mapped[str | None] = mapped_column(String(500), default=None)
     stripe_charge_id: Mapped[str | None] = mapped_column(String(255), default=None)
     stripe_transfer_id: Mapped[str | None] = mapped_column(String(255), default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
