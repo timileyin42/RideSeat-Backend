@@ -14,9 +14,17 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute(
-        "ALTER TABLE payments ADD CONSTRAINT IF NOT EXISTS uq_payments_booking_id UNIQUE (booking_id)"
-    )
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_constraint
+                WHERE conname = 'uq_payments_booking_id'
+            ) THEN
+                ALTER TABLE payments ADD CONSTRAINT uq_payments_booking_id UNIQUE (booking_id);
+            END IF;
+        END$$;
+    """)
 
 
 def downgrade() -> None:
