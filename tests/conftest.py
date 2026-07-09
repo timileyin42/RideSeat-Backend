@@ -5,6 +5,18 @@ from sqlalchemy.pool import StaticPool
 
 from app.core.database import Base
 
+# Import all models so SQLAlchemy registers them before create_all
+import app.models.user          # noqa: F401
+import app.models.vehicle       # noqa: F401
+import app.models.trip          # noqa: F401
+import app.models.booking       # noqa: F401
+import app.models.payment       # noqa: F401
+import app.models.review        # noqa: F401
+import app.models.notification  # noqa: F401
+import app.models.message       # noqa: F401
+import app.models.device        # noqa: F401
+import app.models.ticket        # noqa: F401
+
 
 @pytest.fixture(scope="session")
 def engine():

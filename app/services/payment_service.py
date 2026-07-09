@@ -290,46 +290,120 @@ class PaymentService:
 
         return self.payment_repo.update(db, payment)
 
-    # --- Stripe Connect (driver payout onboarding) ---
+    # --- Stripe Connect Custom (driver payout onboarding) ---
 
-    def create_connect_account(self, db: Session, driver_id: UUID, return_url: str, refresh_url: str) -> dict:
-        """Create or resume a Stripe Express account for a driver, return onboarding URL."""
+    def create_connect_account(self, db: Session, driver_id: UUID, data: dict, client_ip: str) -> dict:
+        """
+        Create a Stripe Custom Connect account for a driver in one call.
+        Collects personal details, bank account, and ToS acceptance — no redirect needed.
+        """
+        if not data.get("tos_accepted"):
+            raise ValueError("Driver must accept Stripe's Terms of Service")
+
         self._configured_stripe()
         driver = self.user_repo.get_by_id(db, driver_id)
         if not driver:
             raise ValueError("User not found")
 
-        account_id = driver.payment_details
-        if not account_id:
-            try:
+        import time as _time
+        try:
+            if driver.payment_details:
+                account_id = driver.payment_details
+            else:
                 account = stripe.Account.create(
-                    type="express",
+                    type="custom",
                     country="GB",
                     email=driver.email,
                     capabilities={"transfers": {"requested": True}},
+                    individual={
+                        "first_name": data["first_name"],
+                        "last_name": data["last_name"],
+                        "dob": {
+                            "day": data["dob"]["day"],
+                            "month": data["dob"]["month"],
+                            "year": data["dob"]["year"],
+                        },
+                        "address": {
+                            "line1": data["address"]["line1"],
+                            "city": data["address"]["city"],
+                            "postal_code": data["address"]["postal_code"],
+                            "country": "GB",
+                        },
+                        "email": driver.email,
+                        "phone": data["phone"],
+                    },
+                    tos_acceptance={
+                        "date": int(_time.time()),
+                        "ip": client_ip,
+                    },
                     metadata={"user_id": str(driver_id)},
                 )
                 account_id = account.id
                 driver.payment_details = account_id
                 self.user_repo.update(db, driver)
-                payment_circuit_breaker.record_success()
-            except stripe.StripeError as exc:
-                payment_circuit_breaker.record_failure()
-                raise ValueError(f"Stripe error: {exc.user_message or str(exc)}") from exc
 
-        try:
-            link = stripe.AccountLink.create(
-                account=account_id,
-                refresh_url=refresh_url,
-                return_url=return_url,
-                type="account_onboarding",
+            # Attach UK bank account for payouts
+            stripe.Account.create_external_account(
+                account_id,
+                external_account={
+                    "object": "bank_account",
+                    "country": "GB",
+                    "currency": "gbp",
+                    "account_holder_name": data["account_holder_name"],
+                    "routing_number": data["sort_code"],
+                    "account_number": data["account_number"],
+                },
+                idempotency_key=f"bank:{driver_id}",
             )
+
+            account = stripe.Account.retrieve(account_id)
             payment_circuit_breaker.record_success()
         except stripe.StripeError as exc:
             payment_circuit_breaker.record_failure()
             raise ValueError(f"Stripe error: {exc.user_message or str(exc)}") from exc
 
-        return {"account_id": account_id, "onboarding_url": link.url}
+        return {
+            "account_id": account_id,
+            "charges_enabled": account.get("charges_enabled", False),
+            "payouts_enabled": account.get("payouts_enabled", False),
+        }
+
+    def upload_identity_document(self, driver_id: UUID, file_bytes: bytes, filename: str, purpose: str) -> dict:
+        """
+        Upload a front/back ID document to Stripe and attach it to the driver's account.
+        purpose: 'identity_document_front' | 'identity_document_back'
+        """
+        self._configured_stripe()
+        import io
+        try:
+            stripe_file = stripe.File.create(
+                purpose="identity_document",
+                file=(filename, io.BytesIO(file_bytes), "image/jpeg"),
+            )
+            payment_circuit_breaker.record_success()
+        except stripe.StripeError as exc:
+            payment_circuit_breaker.record_failure()
+            raise ValueError(f"Stripe error: {exc.user_message or str(exc)}") from exc
+        return {"file_id": stripe_file.id, "message": f"{purpose} uploaded successfully"}
+
+    def attach_identity_document(self, db: Session, driver_id: UUID, front_file_id: str, back_file_id: str | None) -> None:
+        """Attach uploaded document file IDs to the driver's Stripe account."""
+        self._configured_stripe()
+        driver = self.user_repo.get_by_id(db, driver_id)
+        if not driver or not driver.payment_details:
+            raise ValueError("Driver has no connected account")
+        doc: dict = {"front": front_file_id}
+        if back_file_id:
+            doc["back"] = back_file_id
+        try:
+            stripe.Account.modify(
+                driver.payment_details,
+                individual={"verification": {"document": doc}},
+            )
+            payment_circuit_breaker.record_success()
+        except stripe.StripeError as exc:
+            payment_circuit_breaker.record_failure()
+            raise ValueError(f"Stripe error: {exc.user_message or str(exc)}") from exc
 
     def get_connect_status(self, db: Session, driver_id: UUID) -> dict:
         """Return Stripe Connect onboarding status for the driver."""
@@ -338,12 +412,7 @@ class PaymentService:
         if not driver:
             raise ValueError("User not found")
         if not driver.payment_details:
-            return {
-                "connected": False,
-                "charges_enabled": False,
-                "payouts_enabled": False,
-                "account_id": None,
-            }
+            return {"connected": False, "charges_enabled": False, "payouts_enabled": False, "account_id": None}
         try:
             account = stripe.Account.retrieve(driver.payment_details)
             payment_circuit_breaker.record_success()
