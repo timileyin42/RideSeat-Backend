@@ -98,5 +98,11 @@ class TicketStatus(StrEnum):
     CLOSED = "CLOSED"
 
 
+class TripStatus(StrEnum):
+    ACTIVE = "ACTIVE"
+    STARTED = "STARTED"
+    COMPLETED = "COMPLETED"
+
+
 PLATFORM_FEE_PERCENT = 0.1
 CURRENCY = "gbp"

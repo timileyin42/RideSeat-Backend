@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.constants import PaymentStatus
 from app.models.payment import Payment
 from app.models.booking import Booking
+from app.models.trip import Trip
 
 
 class PaymentRepository:
@@ -47,6 +48,31 @@ class PaymentRepository:
     def sum_platform_fees(self, db: Session) -> float:
         stmt = select(func.coalesce(func.sum(Payment.platform_fee), 0)).where(Payment.status == PaymentStatus.SUCCEEDED)
         return float(db.execute(stmt).scalar_one())
+
+    def list_payouts_by_driver(self, db: Session, driver_id: UUID) -> list[Payment]:
+        """All payments for trips driven by this driver, ordered newest first."""
+        stmt = (
+            select(Payment)
+            .join(Booking, Booking.id == Payment.booking_id)
+            .join(Trip, Trip.id == Booking.trip_id)
+            .where(Trip.driver_id == driver_id)
+            .order_by(Payment.created_at.desc())
+        )
+        return list(db.execute(stmt).scalars().all())
+
+    def list_unpaid_by_driver(self, db: Session, driver_id: UUID) -> list[Payment]:
+        """Payments that succeeded but haven't been transferred to the driver yet."""
+        stmt = (
+            select(Payment)
+            .join(Booking, Booking.id == Payment.booking_id)
+            .join(Trip, Trip.id == Booking.trip_id)
+            .where(
+                Trip.driver_id == driver_id,
+                Payment.status == PaymentStatus.SUCCEEDED,
+                Payment.stripe_transfer_id.is_(None),
+            )
+        )
+        return list(db.execute(stmt).scalars().all())
 
     def list_by_passenger_between(
         self,

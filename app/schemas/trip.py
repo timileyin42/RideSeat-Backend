@@ -212,4 +212,7 @@ class TripResponse(BaseModel):
     stops: list[StopPoint] | None
     notes: str | None
     is_cancelled: bool
+    trip_status: str = "ACTIVE"
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
     pending_booking_count: int = 0

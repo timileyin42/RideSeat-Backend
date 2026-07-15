@@ -121,3 +121,35 @@ def cancel_trip(
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.patch("/{trip_id}/start", response_model=DataResponse[TripResponse])
+def start_trip(
+    trip_id: UUID,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Driver marks the trip as started."""
+    try:
+        trip = trip_service.start_trip(db, current_user, trip_id)
+        db.commit()
+        return DataResponse(data=trip)
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.patch("/{trip_id}/complete", response_model=DataResponse[TripResponse])
+def complete_trip(
+    trip_id: UUID,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Driver marks the trip as completed. All confirmed bookings are marked completed."""
+    try:
+        trip = trip_service.complete_trip(db, current_user, trip_id)
+        db.commit()
+        return DataResponse(data=trip)
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc

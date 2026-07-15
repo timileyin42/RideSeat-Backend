@@ -43,6 +43,9 @@ class Trip(Base):
     stops: Mapped[list | None] = mapped_column(JSON, default=None)
     notes: Mapped[str | None] = mapped_column(String(500), default=None)
     is_cancelled: Mapped[bool] = mapped_column(Boolean, default=False)
+    trip_status: Mapped[str] = mapped_column(String(20), default="ACTIVE")
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 

@@ -5,7 +5,8 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.core.constants import BookingMode
+from app.core.constants import BookingMode, BookingStatus, TripStatus
+from app.models.booking import Booking
 from app.models.trip import Trip
 from app.models.user import User
 from app.repositories.trip_repo import TripRepository
@@ -48,6 +49,46 @@ class TripService:
         for key, value in updates.items():
             if value is not None:
                 setattr(trip, key, value)
+        updated = self.trip_repo.update(db, trip)
+        return self._to_response(db, updated)
+
+    def start_trip(self, db: Session, driver: User, trip_id: UUID) -> dict:
+        trip = self.trip_repo.get_by_id(db, trip_id)
+        if not trip or trip.is_cancelled:
+            raise ValueError("Trip not found")
+        if trip.driver_id != driver.id:
+            raise ValueError("Not allowed to start this trip")
+        if trip.trip_status != TripStatus.ACTIVE:
+            raise ValueError(f"Trip cannot be started from status: {trip.trip_status}")
+        trip.trip_status = TripStatus.STARTED
+        trip.started_at = now_utc()
+        updated = self.trip_repo.update(db, trip)
+        return self._to_response(db, updated)
+
+    def complete_trip(self, db: Session, driver: User, trip_id: UUID) -> dict:
+        trip = self.trip_repo.get_by_id(db, trip_id)
+        if not trip or trip.is_cancelled:
+            raise ValueError("Trip not found")
+        if trip.driver_id != driver.id:
+            raise ValueError("Not allowed to complete this trip")
+        if trip.trip_status != TripStatus.STARTED:
+            raise ValueError(f"Trip cannot be completed from status: {trip.trip_status}")
+        trip.trip_status = TripStatus.COMPLETED
+        trip.completed_at = now_utc()
+        # Mark all confirmed bookings as completed
+        from sqlalchemy import select as _select
+        confirmed = list(
+            db.execute(
+                _select(Booking).where(
+                    Booking.trip_id == trip_id,
+                    Booking.status == BookingStatus.CONFIRMED,
+                )
+            ).scalars().all()
+        )
+        for booking in confirmed:
+            booking.status = BookingStatus.COMPLETED
+            db.add(booking)
+        db.flush()
         updated = self.trip_repo.update(db, trip)
         return self._to_response(db, updated)
 
@@ -124,6 +165,9 @@ class TripService:
             "stops": trip.stops,
             "notes": trip.notes,
             "is_cancelled": trip.is_cancelled,
+            "trip_status": trip.trip_status,
+            "started_at": trip.started_at,
+            "completed_at": trip.completed_at,
             "pending_booking_count": pending_count,
         }
 

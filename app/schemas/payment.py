@@ -80,3 +80,9 @@ class ConnectStatusResponse(BaseModel):
     charges_enabled: bool
     payouts_enabled: bool
     account_id: str | None = None
+
+
+class PayoutRequestResponse(BaseModel):
+    transfers_initiated: int
+    total_amount: float
+    message: str

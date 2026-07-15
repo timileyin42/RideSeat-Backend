@@ -405,6 +405,36 @@ class PaymentService:
             payment_circuit_breaker.record_failure()
             raise ValueError(f"Stripe error: {exc.user_message or str(exc)}") from exc
 
+    def request_payout(self, db: Session, driver_id: UUID) -> dict:
+        """Driver manually requests payout for all completed, unpaid earnings."""
+        self._configured_stripe()
+        driver = self.user_repo.get_by_id(db, driver_id)
+        if not driver:
+            raise ValueError("User not found")
+        if not driver.payment_details:
+            raise ValueError("You must set up your payout account before requesting a payout")
+
+        pending = self.payment_repo.list_unpaid_by_driver(db, driver_id)
+        if not pending:
+            return {"transfers_initiated": 0, "total_amount": 0.0, "message": "No pending earnings to pay out"}
+
+        total = 0.0
+        count = 0
+        errors = []
+        for payment in pending:
+            try:
+                self.create_payout_for_booking(db, payment.booking_id)
+                total += float(payment.payout_amount)
+                count += 1
+            except ValueError as exc:
+                errors.append(str(exc))
+
+        return {
+            "transfers_initiated": count,
+            "total_amount": round(total, 2),
+            "message": f"{count} payout(s) initiated" + (f"; {len(errors)} skipped" if errors else ""),
+        }
+
     def get_connect_status(self, db: Session, driver_id: UUID) -> dict:
         """Return Stripe Connect onboarding status for the driver."""
         self._configured_stripe()

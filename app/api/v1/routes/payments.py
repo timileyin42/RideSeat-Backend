@@ -17,6 +17,7 @@ from app.schemas.payment import (
     ConnectStatusResponse,
     PaymentIntentCreate,
     PaymentResponse,
+    PayoutRequestResponse,
 )
 from app.services.payment_service import PaymentService
 
@@ -134,6 +135,32 @@ def attach_document(
         payment_service.attach_identity_document(db, current_user.id, front_file_id, back_file_id)
         return DataResponse(data={"message": "Identity document attached successfully"})
     except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/connect/payout-history", response_model=DataResponse[list[PaymentResponse]])
+def driver_payout_history(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Driver's full transaction history — all earnings from their trips."""
+    payments = payment_service.payment_repo.list_payouts_by_driver(db, current_user.id)
+    return DataResponse(data=payments)
+
+
+@router.post("/connect/request-payout", response_model=DataResponse[PayoutRequestResponse])
+def request_payout(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+    _=Depends(rate_limit("request_payout", limit=5, window_seconds=60)),
+):
+    """Driver manually requests payout for all completed, unpaid earnings."""
+    try:
+        result = payment_service.request_payout(db, current_user.id)
+        db.commit()
+        return DataResponse(data=result)
+    except ValueError as exc:
+        db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
