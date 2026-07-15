@@ -10,9 +10,20 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("trips", sa.Column("trip_status", sa.String(20), nullable=False, server_default="ACTIVE"))
-    op.add_column("trips", sa.Column("started_at", sa.DateTime(timezone=True), nullable=True))
-    op.add_column("trips", sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True))
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='trips' AND column_name='trip_status') THEN
+                ALTER TABLE trips ADD COLUMN trip_status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='trips' AND column_name='started_at') THEN
+                ALTER TABLE trips ADD COLUMN started_at TIMESTAMPTZ;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='trips' AND column_name='completed_at') THEN
+                ALTER TABLE trips ADD COLUMN completed_at TIMESTAMPTZ;
+            END IF;
+        END$$;
+    """)
 
 
 def downgrade() -> None:
