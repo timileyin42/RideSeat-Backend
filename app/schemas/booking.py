@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.core.constants import BookingStatus
+from app.core.constants import BookingStatus, TripStatus
 
 
 class StopPoint(BaseModel):
@@ -61,6 +61,7 @@ class TripSummary(BaseModel):
     departure_time: datetime
     available_seats: int
     price_per_seat: float
+    trip_status: TripStatus = TripStatus.ACTIVE
     driver: DriverSummary | None = None
     stops: list[StopPoint] | None = None
 
