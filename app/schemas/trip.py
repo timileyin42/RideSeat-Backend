@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.core.constants import BookingMode
+from app.core.constants import BookingMode, TripStatus
 from app.schemas.user import UserPublicResponse
 
 
@@ -212,7 +212,7 @@ class TripResponse(BaseModel):
     stops: list[StopPoint] | None
     notes: str | None
     is_cancelled: bool
-    trip_status: str = "ACTIVE"
+    trip_status: TripStatus = TripStatus.ACTIVE
     started_at: datetime | None = None
     completed_at: datetime | None = None
     pending_booking_count: int = 0
