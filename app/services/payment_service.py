@@ -375,10 +375,15 @@ class PaymentService:
         """
         self._configured_stripe()
         import io
+        import re
+        safe_filename = re.sub(r"[^\w.\-]", "_", filename or "document.jpg")
+        ext = safe_filename.rsplit(".", 1)[-1].lower()
+        mime = "image/png" if ext == "png" else "image/jpeg"
         try:
             stripe_file = stripe.File.create(
                 purpose="identity_document",
-                file=(filename, io.BytesIO(file_bytes), "image/jpeg"),
+                file=io.BytesIO(file_bytes),
+                file_options={"filename": safe_filename, "content_type": mime},
             )
             payment_circuit_breaker.record_success()
         except stripe.StripeError as exc:
