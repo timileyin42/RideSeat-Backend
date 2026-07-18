@@ -317,6 +317,7 @@ class PaymentService:
                     country="GB",
                     email=driver.email,
                     business_type="individual",
+                    business_profile={"url": "https://rideway.co.uk"},
                     capabilities={"transfers": {"requested": True}},
                     individual={
                         "first_name": data["first_name"],
