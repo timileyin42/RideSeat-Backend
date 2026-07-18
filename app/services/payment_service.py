@@ -316,6 +316,7 @@ class PaymentService:
                     type="custom",
                     country="GB",
                     email=driver.email,
+                    business_type="individual",
                     capabilities={"transfers": {"requested": True}},
                     individual={
                         "first_name": data["first_name"],
