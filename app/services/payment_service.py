@@ -82,10 +82,12 @@ class PaymentService:
         if not payment_circuit_breaker.allow():
             raise ValueError("Payment service temporarily unavailable, try again shortly")
         stripe.api_key = settings.stripe_secret_key
-        # SDK auto-retries idempotent requests on network errors (before our circuit breaker fires)
         stripe.max_network_retries = 2
-        # Fail fast — don't hold a request thread for Stripe's default 80s timeout
-        stripe.timeout = 30
+        # Set timeout — stripe 12+ uses http_client, older versions used stripe.timeout
+        try:
+            stripe.default_http_client = stripe.new_default_http_client(timeout=30)
+        except Exception:
+            pass
 
     def create_payment_intent(self, db: Session, booking_id: UUID, actor_id: UUID) -> Payment:
         """Create a Stripe PaymentIntent synchronously and return client_secret immediately."""
