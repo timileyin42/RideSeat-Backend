@@ -385,8 +385,7 @@ class PaymentService:
         try:
             stripe_file = stripe.File.create(
                 purpose="identity_document",
-                file=io.BytesIO(file_bytes),
-                file_options={"filename": safe_filename, "content_type": mime},
+                file=(safe_filename, io.BytesIO(file_bytes), mime),
             )
             payment_circuit_breaker.record_success()
         except stripe.StripeError as exc:
