@@ -51,6 +51,10 @@ def create_app() -> FastAPI:
     @app.get("/health")
     def health():
         return {"status": "ok"}
+
+    @app.get("/google-site-verification", response_class=HTMLResponse, include_in_schema=False)
+    def google_site_verification():
+        return '<html><head><meta name="google-site-verification" content="BJ-VWQmRScW_Uxgbluf-hammFDB-uuoM1ZaWjspaRwE" /></head><body></body></html>'
     @app.on_event("startup")
     def bootstrap_admin():
         settings = get_settings()
