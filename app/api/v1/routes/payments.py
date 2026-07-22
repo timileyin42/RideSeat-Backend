@@ -11,6 +11,7 @@ from app.repositories.trip_repo import TripRepository
 from app.repositories.user_repo import UserRepository
 from app.schemas.base import DataResponse
 from app.schemas.payment import (
+    ConnectBalanceResponse,
     ConnectDocumentResponse,
     ConnectOnboardRequest,
     ConnectOnboardResponse,
@@ -172,6 +173,18 @@ def connect_status(
     """Check whether the driver's Stripe Connect account is fully onboarded."""
     try:
         return DataResponse(data=payment_service.get_connect_status(db, current_user.id))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/connect/balance", response_model=DataResponse[ConnectBalanceResponse])
+def connect_balance(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Get the driver's available and pending balance from their Stripe account."""
+    try:
+        return DataResponse(data=payment_service.get_connect_balance(db, current_user.id))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

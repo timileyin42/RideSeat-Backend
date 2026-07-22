@@ -465,3 +465,22 @@ class PaymentService:
             "payouts_enabled": account.get("payouts_enabled", False),
             "account_id": driver.payment_details,
         }
+
+    def get_connect_balance(self, db: Session, driver_id: UUID) -> dict:
+        """Return available and pending balance from the driver's Stripe connected account."""
+        self._configured_stripe()
+        driver = self.user_repo.get_by_id(db, driver_id)
+        if not driver:
+            raise ValueError("User not found")
+        if not driver.payment_details:
+            raise ValueError("No Stripe account found. Complete onboarding first.")
+        try:
+            balance = stripe.Balance.retrieve(stripe_account=driver.payment_details)
+            payment_circuit_breaker.record_success()
+        except stripe.StripeError as exc:
+            payment_circuit_breaker.record_failure()
+            raise ValueError(f"Stripe error: {exc.user_message or str(exc)}") from exc
+        available = sum(b["amount"] for b in balance["available"]) / 100
+        pending = sum(b["amount"] for b in balance["pending"]) / 100
+        currency = balance["available"][0]["currency"] if balance["available"] else "gbp"
+        return {"available": available, "pending": pending, "currency": currency}

@@ -86,3 +86,9 @@ class PayoutRequestResponse(BaseModel):
     transfers_initiated: int
     total_amount: float
     message: str
+
+
+class ConnectBalanceResponse(BaseModel):
+    available: float
+    pending: float
+    currency: str
