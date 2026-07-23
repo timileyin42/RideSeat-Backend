@@ -11,6 +11,7 @@ from app.schemas.base import DataResponse
 from app.schemas.user import (
     OnboardingRequest,
     PhoneNumberResponse,
+    PhoneOTPRequest,
     PhoneVerificationRequest,
     PhoneVerificationResponse,
     PlaylistResponse,
@@ -107,11 +108,12 @@ async def upload_vehicle_photo(
 
 @router.post("/me/phone/request", response_model=DataResponse[PhoneVerificationResponse])
 def request_phone_verification(
+    payload: PhoneOTPRequest,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     try:
-        channel = user_service.request_phone_verification(db, current_user)
+        channel = user_service.request_phone_verification(db, current_user, payload.phone_number)
         db.commit()
         return DataResponse(data=PhoneVerificationResponse(status="sent", channel=channel))
     except ValueError as exc:

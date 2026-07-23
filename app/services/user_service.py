@@ -72,17 +72,16 @@ class UserService:
         pagination = normalize_pagination(limit, offset)
         return self.user_repo.list_users(db, limit=pagination.limit, offset=pagination.offset)
 
-    def request_phone_verification(self, db: Session, user: User) -> str:
-        """Send a phone OTP and return the channel used ("sms", "whatsapp", "voice")."""
-        if not user.phone_number:
-            raise ValueError("Phone number required")
+    def request_phone_verification(self, db: Session, user: User, phone_number: str) -> str:
+        """Save phone number, send OTP, return the channel used ("sms", "whatsapp", "voice")."""
         from app.services import otp_service
+        user.phone_number = phone_number
         token = f"{secrets.randbelow(1000000):06d}"
         user.phone_verification_token = token
         user.phone_verification_expires_at = now_utc() + timedelta(minutes=10)
         self.user_repo.update(db, user)
-        channel = otp_service.next_phone_channel(user.phone_number)
-        self._send_phone_otp(user.phone_number, token, channel)
+        channel = otp_service.next_phone_channel(phone_number)
+        self._send_phone_otp(phone_number, token, channel)
         return channel
 
     def _send_phone_otp(self, phone_number: str, token: str, channel: str) -> None:

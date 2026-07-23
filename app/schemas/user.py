@@ -111,6 +111,14 @@ class OnboardingRequest(BaseModel):
     last_name: str = Field(min_length=1, max_length=100)
 
 
+class PhoneOTPRequest(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "example": {"phone_number": "+447911123456"}
+    })
+
+    phone_number: str = Field(min_length=7, max_length=20)
+
+
 class PhoneVerificationRequest(BaseModel):
     model_config = ConfigDict(json_schema_extra={
         "example": {"code": "583017"}
