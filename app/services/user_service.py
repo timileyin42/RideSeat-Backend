@@ -1,8 +1,11 @@
 """User service."""
 
 from datetime import date, timedelta
+import logging
 import re
 import secrets
+
+logger = logging.getLogger(__name__)
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -81,6 +84,7 @@ class UserService:
         user.phone_verification_expires_at = now_utc() + timedelta(minutes=10)
         self.user_repo.update(db, user)
         channel = otp_service.next_phone_channel(phone_number)
+        logger.info("[DEV] Phone OTP for %s: %s", phone_number, token)
         self._send_phone_otp(phone_number, token, channel)
         return channel
 
