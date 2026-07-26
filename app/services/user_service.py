@@ -101,7 +101,6 @@ class UserService:
         base_url = settings.termii_base_url.rstrip("/")
 
         if channel == "voice":
-            # Termii Voice OTP — automated call reads the code aloud
             payload = {
                 "api_key": settings.termii_api_key,
                 "phone_number": phone_number,
@@ -109,7 +108,6 @@ class UserService:
             }
             endpoint = f"{base_url}/api/sms/otp/send/voice"
         else:
-            # SMS (generic) or WhatsApp — same /api/sms/send endpoint, different channel value
             termii_channel = "whatsapp" if channel == "whatsapp" else "generic"
             payload = {
                 "to": phone_number,
@@ -128,10 +126,11 @@ class UserService:
             headers={"Content-Type": "application/json"},
         )
         try:
-            with http_request.urlopen(req, timeout=10):
-                pass
-        except Exception:
-            pass  # delivery failure is non-fatal — user can request resend
+            with http_request.urlopen(req, timeout=10) as resp:
+                resp_body = resp.read().decode("utf-8")
+                logger.info("[TERMII] %s → %s %s", endpoint, resp.status, resp_body)
+        except Exception as e:
+            logger.warning("[TERMII] delivery failed: %s", e)
 
     def verify_phone(self, db: Session, code: str, phone_number: str | None = None, user=None) -> dict:
         from app.services import otp_service

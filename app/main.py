@@ -1,5 +1,8 @@
 """Application entry point."""
 
+import logging
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
