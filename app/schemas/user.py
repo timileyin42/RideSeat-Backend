@@ -121,9 +121,10 @@ class PhoneOTPRequest(BaseModel):
 
 class PhoneVerificationRequest(BaseModel):
     model_config = ConfigDict(json_schema_extra={
-        "example": {"code": "583017"}
+        "example": {"phone_number": "+447911123456", "code": "583017"}
     })
 
+    phone_number: str | None = None
     code: str = Field(min_length=6, max_length=6)
 
 

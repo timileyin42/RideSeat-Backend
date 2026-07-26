@@ -75,14 +75,18 @@ class UserService:
         pagination = normalize_pagination(limit, offset)
         return self.user_repo.list_users(db, limit=pagination.limit, offset=pagination.offset)
 
-    def request_phone_verification(self, db: Session, user: User, phone_number: str) -> str:
-        """Save phone number, send OTP, return the channel used ("sms", "whatsapp", "voice")."""
+    def request_phone_verification(self, db: Session, phone_number: str, user=None) -> str:
+        """Send OTP to phone_number. Saves to user profile if authenticated, else stores in Redis."""
         from app.services import otp_service
-        user.phone_number = phone_number
         token = f"{secrets.randbelow(1000000):06d}"
-        user.phone_verification_token = token
-        user.phone_verification_expires_at = now_utc() + timedelta(minutes=10)
-        self.user_repo.update(db, user)
+        if user is not None:
+            user.phone_number = phone_number
+            user.phone_verification_token = token
+            user.phone_verification_expires_at = now_utc() + timedelta(minutes=10)
+            self.user_repo.update(db, user)
+        else:
+            # Unauthenticated — store OTP in Redis keyed by phone number
+            otp_service.set_phone_otp(phone_number, token)
         channel = otp_service.next_phone_channel(phone_number)
         logger.info("[DEV] Phone OTP for %s: %s", phone_number, token)
         self._send_phone_otp(phone_number, token, channel)
@@ -129,19 +133,28 @@ class UserService:
         except Exception:
             pass  # delivery failure is non-fatal — user can request resend
 
-    def verify_phone(self, db: Session, user: User, code: str) -> User:
-        if not user.phone_verification_token or user.phone_verification_token != code:
-            raise ValueError("Invalid verification code")
-        if not user.phone_verification_expires_at or ensure_utc(user.phone_verification_expires_at) < now_utc():
-            raise ValueError("Verification code expired")
-        user.is_phone_verified = True
-        user.phone_verification_token = None
-        user.phone_verification_expires_at = None
-        # Reset channel counter so next time starts fresh from SMS
+    def verify_phone(self, db: Session, code: str, phone_number: str | None = None, user=None) -> dict:
         from app.services import otp_service
-        if user.phone_number:
-            otp_service.reset_phone_channel(user.phone_number)
-        return self.user_repo.update(db, user)
+        if user is not None:
+            if not user.phone_verification_token or user.phone_verification_token != code:
+                raise ValueError("Invalid verification code")
+            if not user.phone_verification_expires_at or ensure_utc(user.phone_verification_expires_at) < now_utc():
+                raise ValueError("Verification code expired")
+            user.is_phone_verified = True
+            user.phone_verification_token = None
+            user.phone_verification_expires_at = None
+            if user.phone_number:
+                otp_service.reset_phone_channel(user.phone_number)
+            return {"user": self.user_repo.update(db, user), "phone_number": user.phone_number}
+        else:
+            if not phone_number:
+                raise ValueError("phone_number is required when not authenticated")
+            stored = otp_service.get_phone_otp(phone_number)
+            if not stored or stored != code:
+                raise ValueError("Invalid verification code")
+            otp_service.delete_phone_otp(phone_number)
+            otp_service.reset_phone_channel(phone_number)
+            return {"user": None, "phone_number": phone_number}
 
     def get_phone_for_driver(self, db: Session, actor: User, passenger_id: UUID) -> str:
         allowed = self.booking_repo.has_confirmed_booking_between(db, actor.id, passenger_id)

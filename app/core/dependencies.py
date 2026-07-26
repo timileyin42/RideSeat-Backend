@@ -6,6 +6,7 @@ from time import monotonic
 
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordBearer
+from typing import Optional
 from sqlalchemy.orm import Session
 from uuid import UUID
 
@@ -40,6 +41,24 @@ def get_current_user(
         return user
     except ValueError as exc:
         raise HTTPException(status_code=401, detail="Invalid authentication credentials") from exc
+
+
+security_optional = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token", auto_error=False)
+
+
+def get_optional_user(
+    token: Optional[str] = Depends(security_optional),
+    db: Session = Depends(get_db),
+):
+    """Returns the current user if a valid token is provided, otherwise None."""
+    if not token:
+        return None
+    try:
+        token_data = decode_access_token(token)
+        user_id = UUID(token_data["sub"])
+        return user_repo.get_by_id(db, user_id)
+    except Exception:
+        return None
 
 
 def require_admin(

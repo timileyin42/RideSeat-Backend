@@ -79,3 +79,20 @@ def next_phone_channel(phone: str) -> str:
 def reset_phone_channel(phone: str) -> None:
     """Clear the channel counter after successful verification."""
     _client().delete(_KEY_PHONE_CHANNEL.format(phone))
+
+
+# ── unauthenticated phone OTP storage ─────────────────────────────────────────
+
+_KEY_PHONE_OTP = "rideway:otp:phone:{}"
+
+
+def set_phone_otp(phone: str, otp: str) -> None:
+    _client().setex(_KEY_PHONE_OTP.format(phone), _TTL, otp)
+
+
+def get_phone_otp(phone: str) -> str | None:
+    return _client().get(_KEY_PHONE_OTP.format(phone))
+
+
+def delete_phone_otp(phone: str) -> None:
+    _client().delete(_KEY_PHONE_OTP.format(phone))

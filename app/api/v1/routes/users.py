@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 from uuid import UUID
 
-from app.core.dependencies import get_current_user, get_db
+from app.core.dependencies import get_current_user, get_db, get_optional_user
 from app.repositories.booking_repo import BookingRepository
 from app.repositories.user_repo import UserRepository
 from app.schemas.base import DataResponse
@@ -110,10 +110,10 @@ async def upload_vehicle_photo(
 def request_phone_verification(
     payload: PhoneOTPRequest,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(get_optional_user),
 ):
     try:
-        channel = user_service.request_phone_verification(db, current_user, payload.phone_number)
+        channel = user_service.request_phone_verification(db, payload.phone_number, user=current_user)
         db.commit()
         return DataResponse(data=PhoneVerificationResponse(status="sent", channel=channel))
     except ValueError as exc:
@@ -121,16 +121,18 @@ def request_phone_verification(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.post("/me/phone/verify", response_model=DataResponse[UserPrivateResponse])
+@router.post("/me/phone/verify", response_model=DataResponse[dict])
 def verify_phone(
     payload: PhoneVerificationRequest,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(get_optional_user),
 ):
     try:
-        user = user_service.verify_phone(db, current_user, payload.code)
+        result = user_service.verify_phone(db, payload.code, phone_number=payload.phone_number, user=current_user)
         db.commit()
-        return DataResponse(data=user)
+        if result["user"] is not None:
+            return DataResponse(data={"verified": True, "phone_number": result["phone_number"], "user": result["user"]})
+        return DataResponse(data={"verified": True, "phone_number": result["phone_number"]})
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
