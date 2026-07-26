@@ -3,10 +3,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db, rate_limit
+from app.core.dependencies import get_current_user, get_db, rate_limit
 from app.core.security import create_access_token, create_refresh_token, decode_refresh_token
 from app.schemas.auth import (
     AuthTokenResponse,
+    ChangePasswordRequest,
     ForgotPasswordRequest,
     GoogleAuthRequest,
     GoogleMobileAuthRequest,
@@ -213,3 +214,20 @@ def refresh_token(
         ))
     except ValueError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
+
+
+@router.post("/change-password", response_model=DataResponse[dict])
+def change_password(
+    payload: ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+    _=Depends(rate_limit("auth_change_password", limit=5, window_seconds=60)),
+):
+    """Change password from within the app settings. Requires current password."""
+    try:
+        auth_service.change_password(db, current_user, payload.current_password, payload.new_password)
+        db.commit()
+        return DataResponse(data={"message": "Password changed successfully"})
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc

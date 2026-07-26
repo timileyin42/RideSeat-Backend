@@ -111,6 +111,12 @@ class AuthService:
         otp_service.delete_reset_otp(email)
         return updated
 
+    def change_password(self, db: Session, user: User, current_password: str, new_password: str) -> None:
+        if not user.password_hash or not verify_password(current_password, user.password_hash):
+            raise ValueError("Current password is incorrect")
+        user.password_hash = hash_password(new_password)
+        self.user_repo.update(db, user)
+
     def google_auth(self, db: Session, id_token: str) -> tuple[User, str, str]:
         if not id_token:
             raise ValueError("Invalid Google token")

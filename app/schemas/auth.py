@@ -1,6 +1,6 @@
 """Authentication schemas."""
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 from app.schemas.user import UserPrivateResponse
 
@@ -94,6 +94,26 @@ class ResetPasswordRequest(BaseModel):
     email: EmailStr
     token: str = Field(min_length=6, max_length=6)
     new_password: str = Field(min_length=8, max_length=128)
+
+
+class ChangePasswordRequest(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "current_password": "OldSecurePass1!",
+            "new_password": "NewSecurePass2!",
+            "confirm_new_password": "NewSecurePass2!",
+        }
+    })
+
+    current_password: str
+    new_password: str = Field(min_length=8, max_length=128)
+    confirm_new_password: str
+
+    @model_validator(mode="after")
+    def passwords_match(self) -> "ChangePasswordRequest":
+        if self.new_password != self.confirm_new_password:
+            raise ValueError("New passwords do not match")
+        return self
 
 
 class GoogleAuthRequest(BaseModel):
