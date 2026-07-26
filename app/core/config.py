@@ -42,6 +42,7 @@ class Settings:
     termii_sender_id: str
     termii_base_url: str
     field_encryption_key: str
+    cors_origins: list[str]
 
 
 @lru_cache
@@ -82,4 +83,9 @@ def get_settings() -> Settings:
         termii_sender_id=os.getenv("TERMII_SENDER_ID", ""),
         termii_base_url=os.getenv("TERMII_BASE_URL", "https://api.ng.termii.com"),
         field_encryption_key=os.getenv("FIELD_ENCRYPTION_KEY", ""),
+        cors_origins=[
+            o.strip()
+            for o in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
+            if o.strip()
+        ],
     )
