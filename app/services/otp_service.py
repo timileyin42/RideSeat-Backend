@@ -19,7 +19,7 @@ _KEY_RESET = "rideway:otp:reset:{}"
 _KEY_PHONE_CHANNEL = "rideway:otp:phone_channel:{}"
 
 # Ordered delivery channels — each resend escalates to the next
-PHONE_CHANNELS = ["sms", "sms", "voice"]
+PHONE_CHANNELS = ["sms"]
 
 
 def _client() -> redis.Redis:

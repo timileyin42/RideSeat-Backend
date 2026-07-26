@@ -100,24 +100,15 @@ class UserService:
             return  # Termii not configured — skip silently
         base_url = settings.termii_base_url.rstrip("/")
 
-        if channel == "voice":
-            payload = {
-                "api_key": settings.termii_api_key,
-                "phone_number": phone_number,
-                "code": token,
-            }
-            endpoint = f"{base_url}/api/sms/otp/send/voice"
-        else:
-            termii_channel = "whatsapp" if channel == "whatsapp" else "generic"
-            payload = {
-                "to": phone_number,
-                "from": settings.termii_sender_id,
-                "sms": f"Your Rideway verification code is {token}. Valid for 10 minutes.",
-                "type": "plain",
-                "channel": termii_channel,
-                "api_key": settings.termii_api_key,
-            }
-            endpoint = f"{base_url}/api/sms/send"
+        payload = {
+            "to": phone_number,
+            "from": settings.termii_sender_id,
+            "sms": f"Your Rideway verification code is {token}. Valid for 10 minutes.",
+            "type": "plain",
+            "channel": "generic",
+            "api_key": settings.termii_api_key,
+        }
+        endpoint = f"{base_url}/api/sms/send"
 
         data = json.dumps(payload).encode("utf-8")
         req = http_request.Request(
