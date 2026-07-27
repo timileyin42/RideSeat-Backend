@@ -230,7 +230,7 @@ class PaymentService:
                 currency=CURRENCY,
                 destination=driver.payment_details,
                 metadata={"booking_id": str(booking_id)},
-                idempotency_key=f"payout:{booking_id}",
+                idempotency_key=f"payout:{payment.id}",
             )
             payment_circuit_breaker.record_success()
         except stripe.StripeError as exc:
