@@ -298,7 +298,7 @@ class BookingService:
         """Cancel PENDING_PAYMENT bookings older than 30 minutes. Returns count cancelled."""
         from app.utils.datetime import now_utc
         from datetime import timedelta
-        cutoff = now_utc() - timedelta(minutes=30)
+        cutoff = now_utc() - timedelta(minutes=10)
         expired = self.booking_repo.list_by_status_before(db, BookingStatus.PENDING_PAYMENT, cutoff)
         count = 0
         for booking in expired:
