@@ -437,6 +437,7 @@ class PaymentService:
                 total += float(payment.payout_amount)
                 count += 1
             except ValueError as exc:
+                logger.warning("Payout skipped for booking %s: %s", payment.booking_id, exc)
                 errors.append(str(exc))
 
         return {
