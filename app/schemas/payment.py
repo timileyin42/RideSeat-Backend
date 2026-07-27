@@ -1,6 +1,7 @@
 """Payment schemas."""
 
 from datetime import date, datetime
+from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.constants import PaymentStatus
@@ -16,8 +17,8 @@ class PaymentIntentCreate(BaseModel):
 class PaymentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: str
-    booking_id: str
+    id: UUID
+    booking_id: UUID
     amount: float
     platform_fee: float
     payout_amount: float
