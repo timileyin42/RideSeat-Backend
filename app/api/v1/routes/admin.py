@@ -142,3 +142,21 @@ def reject_identity(
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+
+@router.post("/users/{user_id}/verify-email", response_model=DataResponse[UserPrivateResponse])
+def admin_verify_email(
+    user_id: UUID,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Force-verify a user's email address (admin only)."""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+    user = UserRepository().get_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.is_email_verified = True
+    UserRepository().update(db, user)
+    db.commit()
+    return DataResponse(data=user)
