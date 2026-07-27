@@ -1,8 +1,12 @@
 """Payment routes."""
 
+import logging
+
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, Request, UploadFile
 from sqlalchemy.orm import Session
 from uuid import UUID
+
+logger = logging.getLogger(__name__)
 
 from app.core.dependencies import get_current_user, get_db, rate_limit
 from app.repositories.booking_repo import BookingRepository
@@ -36,10 +40,14 @@ def create_payment_intent(
     try:
         payment = payment_service.create_payment_intent(db, UUID(payload.booking_id), current_user.id)
         db.commit()
-        return DataResponse(data=payment)
+        return DataResponse(data=PaymentResponse.model_validate(payment))
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        db.rollback()
+        logger.exception("Unexpected error in create_payment_intent")
+        raise HTTPException(status_code=500, detail="Payment processing error") from exc
 
 
 @router.post("/webhook")
