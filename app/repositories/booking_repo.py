@@ -92,6 +92,14 @@ class BookingRepository:
         stmt = select(Booking).where(Booking.trip_id == trip_id, Booking.passenger_id == passenger_id)
         return db.execute(stmt).scalar_one_or_none()
 
+    def list_by_status_before(self, db: Session, status: BookingStatus, before) -> list[Booking]:
+        from datetime import datetime
+        stmt = select(Booking).where(
+            Booking.status == status,
+            Booking.created_at < before,
+        )
+        return list(db.execute(stmt).scalars().all())
+
     def has_confirmed_booking_between(self, db: Session, driver_id: UUID, passenger_id: UUID) -> bool:
         stmt = (
             select(func.count(Booking.id))

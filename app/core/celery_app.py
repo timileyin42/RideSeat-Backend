@@ -27,5 +27,9 @@ celery_app.conf.beat_schedule = {
     "process-pending-intents": {
         "task": "app.tasks.payment_tasks.process_pending_intents",
         "schedule": 60.0,
-    }
+    },
+    "cancel-expired-pending-payments": {
+        "task": "app.tasks.payment_tasks.cancel_expired_pending_payments",
+        "schedule": 120.0,  # every 2 minutes
+    },
 }

@@ -37,6 +37,7 @@ class LuggageSize(StrEnum):
 
 class BookingStatus(StrEnum):
     PENDING = "PENDING"
+    PENDING_PAYMENT = "PENDING_PAYMENT"
     CONFIRMED = "CONFIRMED"
     CANCELLED = "CANCELLED"
     COMPLETED = "COMPLETED"

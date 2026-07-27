@@ -19,6 +19,7 @@ from app.repositories.booking_repo import BookingRepository
 from app.repositories.payment_repo import PaymentRepository
 from app.repositories.trip_repo import TripRepository
 from app.repositories.user_repo import UserRepository
+from app.services.email_service import EmailService
 from app.utils.datetime import now_utc
 
 logger = logging.getLogger(__name__)
@@ -284,13 +285,32 @@ class PaymentService:
         if event_type == "payment_intent.succeeded":
             payment.status = PaymentStatus.SUCCEEDED
             payment.stripe_charge_id = data_object.get("latest_charge")
+            self.payment_repo.update(db, payment)
+            self._confirm_booking(db, booking_id)
             self.trigger_payout_background(booking_id)
+            return payment
         elif event_type == "payment_intent.processing":
             payment.status = PaymentStatus.PROCESSING
         else:
             payment.status = PaymentStatus.FAILED
 
         return self.payment_repo.update(db, payment)
+
+    def _confirm_booking(self, db: Session, booking_id: UUID) -> None:
+        from app.repositories.booking_repo import BookingRepository
+        from app.repositories.notification_repo import NotificationRepository
+        from app.repositories.device_repo import DeviceRepository
+        from app.services.booking_service import BookingService
+        from app.services.notification_service import NotificationService
+        booking_service = BookingService(
+            BookingRepository(),
+            self.trip_repo,
+            self.user_repo,
+            EmailService(),
+            NotificationService(DeviceRepository(), NotificationRepository(), self.user_repo),
+            self,
+        )
+        booking_service.confirm_booking_after_payment(db, booking_id)
 
     # --- Stripe Connect Custom (driver payout onboarding) ---
 

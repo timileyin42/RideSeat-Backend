@@ -139,7 +139,7 @@ class BookingService:
             raise ValueError("Not enough seats available")
         total_amount = float(trip.price_per_seat) * seats
         instant = getattr(trip, "instant_booking", False)
-        status = BookingStatus.CONFIRMED if instant else BookingStatus.PENDING
+        status = BookingStatus.PENDING_PAYMENT if instant else BookingStatus.PENDING
         booking = Booking(
             trip_id=trip.id,
             passenger_id=passenger.id,
@@ -150,21 +150,14 @@ class BookingService:
         created = self.booking_repo.create(db, booking)
         driver = self.user_repo.get_by_id(db, trip.driver_id)
         if instant:
+            # Seat is held; confirmation fires after payment succeeds (via webhook)
             self.notification_service.create_notification(
                 db,
                 passenger.id,
                 NotificationType.BOOKING_REQUEST,
-                "Booking confirmed",
-                f"Your seat from {trip.origin_city} to {trip.destination_city} is confirmed.",
+                "Complete your payment",
+                f"Your seat from {trip.origin_city} to {trip.destination_city} is reserved. Complete payment to confirm.",
             )
-            if driver:
-                self.notification_service.create_notification(
-                    db,
-                    driver.id,
-                    NotificationType.BOOKING_REQUEST,
-                    "New booking",
-                    f"{passenger.first_name or 'Passenger'} booked a seat from {trip.origin_city} to {trip.destination_city}.",
-                )
         else:
             if driver:
                 self.email_service.send_booking_request_email(
@@ -274,6 +267,45 @@ class BookingService:
         if status == BookingStatus.CANCELLED:
             self._handle_admin_cancellation(db, booking, trip)
         return updated
+
+    def confirm_booking_after_payment(self, db: Session, booking_id: UUID) -> Booking:
+        """Called by payment webhook after payment_intent.succeeded."""
+        booking = self.booking_repo.get_by_id(db, booking_id)
+        if not booking or booking.status != BookingStatus.PENDING_PAYMENT:
+            return booking
+        booking.status = BookingStatus.CONFIRMED
+        updated = self.booking_repo.update(db, booking)
+        trip = self.trip_repo.get_by_id(db, booking.trip_id)
+        passenger = self.user_repo.get_by_id(db, booking.passenger_id)
+        driver = self.user_repo.get_by_id(db, trip.driver_id) if trip else None
+        origin = trip.origin_city if trip else "origin"
+        destination = trip.destination_city if trip else "destination"
+        if passenger:
+            self.notification_service.create_notification(
+                db, passenger.id, NotificationType.BOOKING_REQUEST,
+                "Booking confirmed",
+                f"Payment received. Your seat from {origin} to {destination} is confirmed.",
+            )
+        if driver:
+            self.notification_service.create_notification(
+                db, driver.id, NotificationType.BOOKING_REQUEST,
+                "New booking",
+                f"{passenger.first_name if passenger else 'A passenger'} has paid and booked a seat from {origin} to {destination}.",
+            )
+        return updated
+
+    def cancel_expired_pending_payments(self, db: Session) -> int:
+        """Cancel PENDING_PAYMENT bookings older than 30 minutes. Returns count cancelled."""
+        from app.utils.datetime import now_utc
+        from datetime import timedelta
+        cutoff = now_utc() - timedelta(minutes=30)
+        expired = self.booking_repo.list_by_status_before(db, BookingStatus.PENDING_PAYMENT, cutoff)
+        count = 0
+        for booking in expired:
+            booking.status = BookingStatus.CANCELLED
+            self.booking_repo.update(db, booking)
+            count += 1
+        return count
 
     def cancel_booking(self, db: Session, actor: User, booking_id: UUID) -> Booking:
         return self.update_status(db, actor, booking_id, BookingStatus.CANCELLED)

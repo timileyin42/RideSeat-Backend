@@ -87,6 +87,37 @@ def dead_letter(original_task: str, task_id: str, args: list, error: str) -> Non
     )
 
 
+@celery_app.task(name="app.tasks.payment_tasks.cancel_expired_pending_payments")
+def cancel_expired_pending_payments() -> None:
+    from app.core.database import create_db_session
+    from app.services.booking_service import BookingService
+    from app.services.notification_service import NotificationService
+    from app.repositories.booking_repo import BookingRepository
+    from app.repositories.trip_repo import TripRepository
+    from app.repositories.device_repo import DeviceRepository
+    from app.repositories.notification_repo import NotificationRepository
+    from app.services.payment_service import PaymentService
+    from app.services.email_service import EmailService
+
+    db = create_db_session()
+    try:
+        notification_service = NotificationService(DeviceRepository(), NotificationRepository(), UserRepository())
+        payment_service = PaymentService(PaymentRepository(), BookingRepository(), TripRepository(), UserRepository())
+        booking_service = BookingService(
+            BookingRepository(), TripRepository(), UserRepository(),
+            EmailService(), notification_service, payment_service,
+        )
+        count = booking_service.cancel_expired_pending_payments(db)
+        db.commit()
+        if count:
+            logger.info("Cancelled %d expired PENDING_PAYMENT bookings", count)
+    except Exception as exc:
+        db.rollback()
+        logger.error("Error cancelling expired pending payments: %s", exc)
+    finally:
+        db.close()
+
+
 def enqueue_payment_intent(payment_id: UUID) -> None:
     process_payment_intent.delay(str(payment_id))
 

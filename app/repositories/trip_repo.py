@@ -57,7 +57,10 @@ class TripRepository:
         stmt = select(Trip).options(selectinload(Trip.driver)).where(Trip.is_cancelled.is_(False))
         confirmed_seats = (
             select(func.coalesce(func.sum(Booking.seats), 0))
-            .where(Booking.trip_id == Trip.id, Booking.status == BookingStatus.CONFIRMED)
+            .where(
+                Booking.trip_id == Trip.id,
+                Booking.status.in_([BookingStatus.CONFIRMED, BookingStatus.PENDING_PAYMENT]),
+            )
             .scalar_subquery()
         )
         if origin_city:
@@ -93,7 +96,7 @@ class TripRepository:
     def count_confirmed_seats(self, db: Session, trip_id: UUID) -> int:
         stmt = select(func.coalesce(func.sum(Booking.seats), 0)).where(
             Booking.trip_id == trip_id,
-            Booking.status == BookingStatus.CONFIRMED,
+            Booking.status.in_([BookingStatus.CONFIRMED, BookingStatus.PENDING_PAYMENT]),
         )
         return int(db.execute(stmt).scalar_one())
 
