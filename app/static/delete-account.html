@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delete Your Account — Rideway</title>
+<style>
+  :root {
+    --bg: #f5f7ff; --surface: #ffffff; --border: #e2e8f0; --navy-mid: #1d3461;
+    --accent: #2563eb; --accent-light: #dbeafe; --body: #334155; --muted: #64748b;
+    --heading: #0f1b35; --danger: #dc2626; --danger-light: #fef2f2;
+    --warning: #d97706; --warning-light: #fffbeb; --success: #16a34a; --success-light: #f0fdf4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0c1220; --surface: #131f35; --border: #1e2d4a; --navy-mid: #1d3461;
+      --accent: #60a5fa; --accent-light: #1e3a5f; --body: #cbd5e1; --muted: #94a3b8;
+      --heading: #f1f5f9; --danger: #f87171; --danger-light: #2d1515;
+      --warning: #fbbf24; --warning-light: #2d2200; --success: #4ade80; --success-light: #0f2d1a;
+    }
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    font-size: 16px; line-height: 1.7; color: var(--body); background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+  .site-header { background: var(--navy-mid); padding: 0 24px; }
+  .header-inner {
+    max-width: 680px; margin: 0 auto; height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .brand-icon { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .brand-icon svg { width: 18px; height: 18px; fill: #fff; }
+  .brand-name { font-weight: 700; font-size: 17px; color: #fff; letter-spacing: -0.3px; }
+  .header-label { font-size: 13px; color: #94a3b8; }
+  .page-wrap { max-width: 680px; margin: 0 auto; padding: 48px 24px 80px; }
+  .page-hero { margin-bottom: 40px; }
+  .danger-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--danger-light); color: var(--danger);
+    font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; padding: 4px 10px; border-radius: 4px; margin-bottom: 14px;
+  }
+  .page-hero h1 {
+    font-size: clamp(26px, 5vw, 34px); font-weight: 800; color: var(--heading);
+    letter-spacing: -0.4px; line-height: 1.15; margin-bottom: 12px;
+  }
+  .page-hero p { font-size: 16px; color: var(--muted); }
+  .method-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 24px; margin-bottom: 24px;
+  }
+  .method-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .method-badge {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+  }
+  .method-badge.primary { background: var(--success-light); }
+  .method-badge.secondary { background: var(--accent-light); }
+  .method-title { font-size: 17px; font-weight: 700; color: var(--heading); }
+  .method-subtitle { font-size: 13px; color: var(--muted); margin-top: 1px; }
+  .steps { list-style: none; padding: 0; counter-reset: step; }
+  .steps li {
+    counter-increment: step; display: flex; align-items: flex-start; gap: 12px;
+    padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 15px;
+  }
+  .steps li:last-child { border-bottom: none; padding-bottom: 0; }
+  .steps li::before {
+    content: counter(step); width: 24px; height: 24px; background: var(--accent); color: #fff;
+    font-size: 12px; font-weight: 700; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;
+  }
+  .steps li strong { color: var(--heading); }
+  .warning-box {
+    background: var(--warning-light); border: 1px solid var(--warning);
+    border-radius: 8px; padding: 14px 16px; margin: 16px 0; font-size: 14px; color: var(--body);
+  }
+  .warning-box strong { color: var(--warning); }
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: 14px; font-weight: 600; color: var(--heading); margin-bottom: 6px; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; padding: 10px 14px; font-size: 15px; border: 1px solid var(--border);
+    border-radius: 8px; background: var(--bg); color: var(--body); font-family: inherit; outline: none;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light);
+  }
+  .form-group textarea { resize: vertical; min-height: 80px; }
+  .form-note { font-size: 12px; color: var(--muted); margin-top: 5px; }
+  .btn-danger {
+    display: inline-flex; align-items: center; gap: 8px; background: var(--danger); color: #fff;
+    font-size: 15px; font-weight: 600; padding: 12px 24px; border: none; border-radius: 8px;
+    cursor: pointer; font-family: inherit; text-decoration: none; transition: opacity 0.15s;
+  }
+  .btn-danger:hover { opacity: 0.88; }
+  .section-title {
+    font-size: 19px; font-weight: 700; color: var(--heading);
+    margin: 40px 0 12px; letter-spacing: -0.2px; padding-top: 16px;
+    border-top: 2px solid var(--border);
+  }
+  .table-wrap { overflow-x: auto; margin-top: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { background: var(--accent); color: #fff; text-align: left; padding: 10px 14px; font-weight: 600; font-size: 13px; }
+  th:first-child { border-radius: 8px 0 0 0; } th:last-child { border-radius: 0 8px 0 0; }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--body); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: var(--bg); }
+  .keep { color: var(--warning); font-weight: 600; }
+  .deleted { color: var(--success); font-weight: 600; }
+  .contact-strip {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px 22px; margin-top: 32px; font-size: 14px;
+  }
+  .contact-strip a { color: var(--accent); }
+  footer {
+    margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--border);
+    font-size: 13px; color: var(--muted); display: flex; justify-content: space-between;
+    flex-wrap: wrap; gap: 10px;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+  @media (max-width: 520px) { .page-wrap { padding: 28px 16px 60px; } }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="https://rideway.co.uk">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+      </div>
+      <span class="brand-name">Rideway</span>
+    </a>
+    <span class="header-label" style="display:flex;flex-direction:column;align-items:flex-end;gap:1px">
+      <span style="color:#ffffff;font-size:13px;font-weight:500">Share Your Ride</span>
+      <span style="color:#94a3b8;font-size:11px">Account Deletion</span>
+    </span>
+  </div>
+</header>
+
+<div class="page-wrap">
+  <div class="page-hero">
+    <span class="danger-tag">&#9888; Permanent action</span>
+    <h1>Delete Your Rideway Account</h1>
+    <p>You can delete your account directly in the app or by submitting a request below. Account deletion is permanent and cannot be undone.</p>
+  </div>
+
+  <div class="method-card">
+    <div class="method-header">
+      <div class="method-badge primary">&#128241;</div>
+      <div>
+        <div class="method-title">Delete in the App</div>
+        <div class="method-subtitle">Fastest method — processed immediately</div>
+      </div>
+    </div>
+    <ol class="steps">
+      <li>Open the <strong>Rideway app</strong> on your phone</li>
+      <li>Tap <strong>Profile</strong> (bottom navigation)</li>
+      <li>Tap <strong>Settings</strong></li>
+      <li>Scroll down and tap <strong>Delete Account</strong></li>
+      <li>Confirm by tapping <strong>Yes, delete my account</strong></li>
+    </ol>
+    <div class="warning-box">
+      <strong>&#9888; Before you delete:</strong> Cancel any upcoming trips or bookings first to avoid impacting other users.
+    </div>
+  </div>
+
+  <div class="method-card">
+    <div class="method-header">
+      <div class="method-badge secondary">&#9993;&#65039;</div>
+      <div>
+        <div class="method-title">Submit a Deletion Request</div>
+        <div class="method-subtitle">If you can't access the app — we process within 30 days</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="email">Email address on your Rideway account *</label>
+      <input type="email" id="email" placeholder="you@example.com">
+    </div>
+    <div class="form-group">
+      <label for="reason">Reason for deletion</label>
+      <select id="reason">
+        <option value="">Prefer not to say</option>
+        <option value="no_longer_needed">No longer need the service</option>
+        <option value="privacy_concerns">Privacy concerns</option>
+        <option value="found_alternative">Found an alternative</option>
+        <option value="technical_issues">Technical issues</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="notes">Additional notes (optional)</label>
+      <textarea id="notes" placeholder="Any additional information..."></textarea>
+    </div>
+    <div class="form-note" style="margin-bottom:16px">
+      By submitting you confirm you are the account holder. We verify your identity before processing. We aim to complete requests within <strong>30 days</strong> as required by UK GDPR.
+    </div>
+    <a href="#" class="btn-danger" onclick="buildMailto(event)">
+      &#128465; Submit Deletion Request
+    </a>
+  </div>
+
+  <div class="section-title">What happens to your data?</div>
+  <p style="font-size:15px;margin-bottom:12px">On deletion, most data is <span class="deleted">permanently deleted</span>. Some is <span class="keep">retained</span> due to legal obligations:</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Data</th><th>On deletion</th><th>Reason</th></tr></thead>
+    <tbody>
+      <tr><td>Profile (name, email, photo)</td><td class="deleted">Deleted within 30 days</td><td>&#8212;</td></tr>
+      <tr><td>Phone number</td><td class="deleted">Deleted within 30 days</td><td>&#8212;</td></tr>
+      <tr><td>Identity documents (ID, licence, selfie)</td><td class="keep">Retained 1 year</td><td>Fraud prevention</td></tr>
+      <tr><td>Trip history</td><td class="keep">Retained 3 years (anonymised)</td><td>Safety / disputes</td></tr>
+      <tr><td>Payment transaction records</td><td class="keep">Retained 7 years</td><td>HMRC / Companies Act</td></tr>
+      <tr><td>In-app messages</td><td class="deleted">Deleted within 30 days</td><td>&#8212;</td></tr>
+      <tr><td>Reviews</td><td class="deleted">Deleted within 30 days</td><td>&#8212;</td></tr>
+      <tr><td>Push notification tokens</td><td class="deleted">Deleted immediately</td><td>&#8212;</td></tr>
+      <tr><td>Stripe payment method (card)</td><td class="deleted">Removed from Stripe</td><td>&#8212;</td></tr>
+      <tr><td>Driver bank account (Stripe Connect)</td><td class="keep">Retained by Stripe</td><td>Financial regulation</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="contact-strip">
+    <p><strong>Questions?</strong> Email <a href="mailto:privacy@rideway.co.uk">privacy@rideway.co.uk</a></p>
+    <p style="margin-top:6px;color:var(--muted)">Read our full <a href="https://api.rideway.co.uk/privacy">Privacy Policy</a> for UK GDPR rights and retention details.</p>
+  </div>
+
+  <footer>
+    <span>&copy; 2026 Rideway Ltd</span>
+    <span><a href="https://api.rideway.co.uk/privacy">Privacy Policy</a> &middot; <a href="mailto:support@rideway.co.uk">support@rideway.co.uk</a></span>
+  </footer>
+</div>
+
+<script>
+function buildMailto(e) {
+  e.preventDefault();
+  var email = document.getElementById('email').value.trim();
+  var reasonEl = document.getElementById('reason');
+  var reason = reasonEl.options[reasonEl.selectedIndex].text;
+  var notes = document.getElementById('notes').value.trim();
+  if (!email) { alert('Please enter your account email address.'); return; }
+  var body = 'Account Deletion Request\n========================\n' +
+    'Account email: ' + email + '\nReason: ' + reason + '\n' +
+    (notes ? 'Notes: ' + notes + '\n' : '') +
+    '\nI confirm I am the account holder and request permanent deletion of my Rideway account and associated personal data under my right to erasure (UK GDPR Art. 17).';
+  window.location.href = 'mailto:privacy@rideway.co.uk?subject=' +
+    encodeURIComponent('Account Deletion Request — ' + email) +
+    '&body=' + encodeURIComponent(body);
+}
+</script>
+</body>
+</html>

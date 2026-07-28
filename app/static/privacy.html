@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy — Rideway</title>
+<style>
+  :root {
+    --bg: #f5f7ff; --surface: #ffffff; --border: #e2e8f0;
+    --navy-mid: #1d3461; --accent: #2563eb; --accent-light: #dbeafe;
+    --body: #334155; --muted: #64748b; --heading: #0f1b35;
+    --tag-bg: #eff6ff; --tag-text: #1d4ed8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0c1220; --surface: #131f35; --border: #1e2d4a; --navy-mid: #1d3461;
+      --accent: #60a5fa; --accent-light: #1e3a5f; --body: #cbd5e1; --muted: #94a3b8;
+      --heading: #f1f5f9; --tag-bg: #1e3a5f; --tag-text: #93c5fd;
+    }
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    font-size: 16px; line-height: 1.75; color: var(--body); background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+  .site-header {
+    background: var(--navy-mid); padding: 0 24px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-inner {
+    max-width: 760px; margin: 0 auto; height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .brand-icon {
+    width: 32px; height: 32px; background: var(--accent); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .brand-icon svg { width: 18px; height: 18px; fill: #fff; }
+  .brand-name { font-weight: 700; font-size: 17px; color: #fff; letter-spacing: -0.3px; }
+  .header-label { font-size: 13px; color: #94a3b8; }
+  .page-wrap { max-width: 760px; margin: 0 auto; padding: 48px 24px 80px; }
+  .policy-hero { margin-bottom: 40px; padding-bottom: 32px; border-bottom: 2px solid var(--border); }
+  .policy-tag {
+    display: inline-block; background: var(--tag-bg); color: var(--tag-text);
+    font-size: 12px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.06em; padding: 4px 10px; border-radius: 4px; margin-bottom: 14px;
+  }
+  .policy-hero h1 {
+    font-size: clamp(28px, 5vw, 38px); font-weight: 800; color: var(--heading);
+    letter-spacing: -0.5px; line-height: 1.15; margin-bottom: 14px;
+  }
+  .policy-meta { font-size: 14px; color: var(--muted); display: flex; gap: 20px; flex-wrap: wrap; }
+  .intro-card {
+    background: var(--accent-light); border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0; padding: 16px 20px; margin-bottom: 40px;
+    font-size: 15px; color: var(--body); line-height: 1.6;
+  }
+  .toc {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 20px 24px; margin-bottom: 48px;
+  }
+  .toc-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--muted); margin-bottom: 12px;
+  }
+  .toc ol {
+    padding-left: 0; list-style: none;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 2px; counter-reset: toc;
+  }
+  .toc li { counter-increment: toc; }
+  .toc a {
+    display: flex; align-items: baseline; gap: 8px;
+    font-size: 14px; color: var(--accent); text-decoration: none; padding: 4px 0;
+  }
+  .toc a::before {
+    content: counter(toc, decimal-leading-zero); font-size: 11px; font-weight: 700;
+    color: var(--muted); flex-shrink: 0;
+  }
+  .toc a:hover { text-decoration: underline; }
+  .section { margin-bottom: 52px; scroll-margin-top: 72px; }
+  .section-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
+  }
+  .section-num {
+    width: 32px; height: 32px; background: var(--accent); color: #fff;
+    font-size: 13px; font-weight: 700; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .section h2 { font-size: 20px; font-weight: 700; color: var(--heading); letter-spacing: -0.2px; }
+  .section h3 { font-size: 16px; font-weight: 600; color: var(--heading); margin: 24px 0 8px; }
+  .section p { margin-bottom: 14px; font-size: 15px; }
+  .section p:last-child { margin-bottom: 0; }
+  .section ul, .section ol { padding-left: 20px; margin-bottom: 14px; font-size: 15px; }
+  .section li { margin-bottom: 6px; }
+  .section strong { color: var(--heading); font-weight: 600; }
+  .section a { color: var(--accent); }
+  .table-wrap { overflow-x: auto; margin: 16px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th {
+    background: var(--accent); color: #fff; text-align: left;
+    padding: 10px 14px; font-weight: 600; font-size: 13px;
+  }
+  th:first-child { border-radius: 8px 0 0 0; }
+  th:last-child { border-radius: 0 8px 0 0; }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--body); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: var(--bg); }
+  .rights-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin: 16px 0; }
+  .right-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+  .right-title { font-size: 13px; font-weight: 700; color: var(--heading); margin-bottom: 4px; }
+  .right-desc { font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .contact-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; }
+  .contact-box p { margin-bottom: 6px; }
+  .contact-box a { color: var(--accent); }
+  .policy-footer {
+    margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--border);
+    font-size: 13px; color: var(--muted); display: flex; gap: 16px;
+    flex-wrap: wrap; align-items: center; justify-content: space-between;
+  }
+  .policy-footer a { color: var(--accent); text-decoration: none; }
+  .policy-footer a:hover { text-decoration: underline; }
+  @media (max-width: 560px) {
+    .page-wrap { padding: 32px 16px 60px; }
+    .toc ol { grid-template-columns: 1fr; }
+    .rights-grid { grid-template-columns: 1fr; }
+    .policy-meta { flex-direction: column; gap: 6px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="https://rideway.co.uk">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+      </div>
+      <span class="brand-name">Rideway</span>
+    </a>
+    <span class="header-label" style="display:flex;flex-direction:column;align-items:flex-end;gap:1px">
+      <span style="color:#ffffff;font-size:13px;font-weight:500">Share Your Ride</span>
+      <span style="color:#94a3b8;font-size:11px">Privacy Policy</span>
+    </span>
+  </div>
+</header>
+
+<div class="page-wrap">
+  <div class="policy-hero">
+    <span class="policy-tag">Legal &amp; Privacy</span>
+    <h1>Privacy Policy</h1>
+    <div class="policy-meta">
+      <span>&#128197; Last updated: 27 July 2026</span>
+      <span>&#128205; Applies to: Rideway mobile app &amp; rideway.co.uk</span>
+      <span>&#127468;&#127463; Governed by UK GDPR</span>
+    </div>
+  </div>
+
+  <div class="intro-card">
+    Rideway is a UK-based carpooling platform connecting drivers and passengers. We are committed to protecting your personal data in accordance with the <strong>UK General Data Protection Regulation (UK GDPR)</strong> and the <strong>Data Protection Act 2018</strong>. This policy explains what data we collect, why, and your rights over it.
+  </div>
+
+  <nav class="toc">
+    <div class="toc-title">Contents</div>
+    <ol>
+      <li><a href="#s1">Who We Are</a></li>
+      <li><a href="#s2">Data We Collect</a></li>
+      <li><a href="#s3">Legal Basis for Processing</a></li>
+      <li><a href="#s4">How We Use Your Data</a></li>
+      <li><a href="#s5">Third Parties &amp; Processors</a></li>
+      <li><a href="#s6">International Transfers</a></li>
+      <li><a href="#s7">Data Retention</a></li>
+      <li><a href="#s8">Your Rights</a></li>
+      <li><a href="#s9">Cookies &amp; Tracking</a></li>
+      <li><a href="#s10">Children</a></li>
+      <li><a href="#s11">Security</a></li>
+      <li><a href="#s12">Changes &amp; Contact</a></li>
+    </ol>
+  </nav>
+
+  <section class="section" id="s1">
+    <div class="section-header"><div class="section-num">01</div><h2>Who We Are</h2></div>
+    <p><strong>Data Controller:</strong> Rideway Ltd, a company registered in England and Wales.</p>
+    <p><strong>Contact:</strong> <a href="mailto:privacy@rideway.co.uk">privacy@rideway.co.uk</a></p>
+    <p>We are registered with the <strong>Information Commissioner's Office (ICO)</strong>, the UK's independent data protection authority. If you have concerns about how we handle your data, you have the right to contact the ICO at <a href="https://ico.org.uk">ico.org.uk</a>.</p>
+  </section>
+
+  <section class="section" id="s2">
+    <div class="section-header"><div class="section-num">02</div><h2>Data We Collect</h2></div>
+    <h3>Account &amp; Identity</h3>
+    <ul>
+      <li>Full name, email address, date of birth</li>
+      <li>Profile photo (optional)</li>
+      <li>Phone number (for SMS verification)</li>
+      <li>Google account information (if you sign in with Google)</li>
+    </ul>
+    <h3>Identity Verification (Drivers only)</h3>
+    <ul>
+      <li>Driving licence number and photos (front and back)</li>
+      <li>Government-issued ID document photo</li>
+      <li>Selfie photograph for identity matching</li>
+    </ul>
+    <h3>Trip &amp; Location Data</h3>
+    <ul>
+      <li>Origin and destination cities, addresses, and coordinates</li>
+      <li>Departure times and trip history</li>
+    </ul>
+    <h3>Payment Information</h3>
+    <ul>
+      <li>Payment is processed securely by <strong>Stripe</strong> — we do not store card numbers or CVVs</li>
+      <li>For drivers: bank account details (sort code, account number) provided to Stripe for payouts</li>
+      <li>Transaction records (amounts, dates, booking references)</li>
+    </ul>
+    <h3>Communications</h3>
+    <ul>
+      <li>In-app messages between drivers and passengers</li>
+      <li>Support ticket content</li>
+      <li>Reviews and ratings</li>
+    </ul>
+    <h3>Device &amp; Technical Data</h3>
+    <ul>
+      <li>Device identifier and platform (iOS/Android) for push notifications</li>
+      <li>App version and IP address</li>
+    </ul>
+  </section>
+
+  <section class="section" id="s3">
+    <div class="section-header"><div class="section-num">03</div><h2>Legal Basis for Processing</h2></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Purpose</th><th>Legal Basis (UK GDPR)</th></tr></thead>
+      <tbody>
+        <tr><td>Creating and managing your account</td><td>Art. 6(1)(b) — Performance of a contract</td></tr>
+        <tr><td>Processing bookings and payments</td><td>Art. 6(1)(b) — Performance of a contract</td></tr>
+        <tr><td>Driver identity verification (KYC)</td><td>Art. 6(1)(c) — Legal obligation</td></tr>
+        <tr><td>Fraud prevention and platform safety</td><td>Art. 6(1)(f) — Legitimate interests</td></tr>
+        <tr><td>SMS / email OTP and notifications</td><td>Art. 6(1)(b) — Performance of a contract</td></tr>
+        <tr><td>Marketing emails</td><td>Art. 6(1)(a) — Consent (opt-in only)</td></tr>
+        <tr><td>Keeping financial records</td><td>Art. 6(1)(c) — Legal obligation (HMRC)</td></tr>
+        <tr><td>Improving the platform</td><td>Art. 6(1)(f) — Legitimate interests</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="section" id="s4">
+    <div class="section-header"><div class="section-num">04</div><h2>How We Use Your Data</h2></div>
+    <ul>
+      <li>To create and maintain your Rideway account</li>
+      <li>To facilitate trip bookings between drivers and passengers</li>
+      <li>To process payments and transfer earnings to drivers</li>
+      <li>To verify driver identity before allowing them to offer rides</li>
+      <li>To send you notifications about bookings, payments, and trip updates</li>
+      <li>To enable in-app messaging between matched drivers and passengers</li>
+      <li>To investigate disputes and provide customer support</li>
+      <li>To detect and prevent fraud and abuse</li>
+      <li>To comply with legal and regulatory obligations</li>
+      <li>To send you marketing communications (only if you have opted in)</li>
+    </ul>
+    <p>We do not sell your personal data to third parties.</p>
+  </section>
+
+  <section class="section" id="s5">
+    <div class="section-header"><div class="section-num">05</div><h2>Third Parties &amp; Processors</h2></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Provider</th><th>Purpose</th><th>Location</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Stripe, Inc.</strong></td><td>Payment processing, driver payouts, driver KYC</td><td>USA (SCCs apply)</td></tr>
+        <tr><td><strong>Google LLC</strong></td><td>OAuth sign-in, Firebase push notifications (Android)</td><td>USA (SCCs apply)</td></tr>
+        <tr><td><strong>Apple Inc.</strong></td><td>Push notifications (APNs) on iOS devices</td><td>USA (SCCs apply)</td></tr>
+        <tr><td><strong>Termii</strong></td><td>SMS one-time passcode delivery</td><td>Nigeria / UK</td></tr>
+        <tr><td><strong>Cloud hosting provider</strong></td><td>Secure hosting of the Rideway platform</td><td>UK / EU</td></tr>
+      </tbody>
+    </table></div>
+    <p>We may also disclose your data where required by law, court order, or to protect the safety of Rideway users.</p>
+  </section>
+
+  <section class="section" id="s6">
+    <div class="section-header"><div class="section-num">06</div><h2>International Transfers</h2></div>
+    <p>Some providers (Stripe, Google, Apple) are based in the United States. Where personal data is transferred outside the UK, we ensure appropriate safeguards under UK GDPR Article 46 — specifically <strong>UK International Data Transfer Agreements (IDTAs)</strong> or equivalent Standard Contractual Clauses with each provider.</p>
+    <p>You can request details of transfer mechanisms by emailing <a href="mailto:privacy@rideway.co.uk">privacy@rideway.co.uk</a>.</p>
+  </section>
+
+  <section class="section" id="s7">
+    <div class="section-header"><div class="section-num">07</div><h2>Data Retention</h2></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Data Category</th><th>Retention Period</th><th>Reason</th></tr></thead>
+      <tbody>
+        <tr><td>Account profile data</td><td>Deleted within 30 days of account deletion</td><td>Contract</td></tr>
+        <tr><td>Trip and booking history</td><td>3 years after completion</td><td>Legitimate interests / disputes</td></tr>
+        <tr><td>Payment and transaction records</td><td>7 years from transaction date</td><td>HMRC / Companies Act</td></tr>
+        <tr><td>Identity verification documents</td><td>Account duration + 1 year after deletion</td><td>Fraud prevention</td></tr>
+        <tr><td>In-app messages</td><td>1 year from message date</td><td>Dispute resolution</td></tr>
+        <tr><td>Support tickets</td><td>3 years from closure</td><td>Legitimate interests</td></tr>
+        <tr><td>Server logs / IP records</td><td>90 days</td><td>Security</td></tr>
+        <tr><td>Marketing consent records</td><td>Until withdrawn + 3 years</td><td>Proof of consent</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="section" id="s8">
+    <div class="section-header"><div class="section-num">08</div><h2>Your Rights</h2></div>
+    <p>Under UK GDPR you have the following rights:</p>
+    <div class="rights-grid">
+      <div class="right-card"><div class="right-title">&#9989; Right of Access</div><div class="right-desc">Request a copy of all data we hold about you (Subject Access Request).</div></div>
+      <div class="right-card"><div class="right-title">&#9998;&#65039; Right to Rectification</div><div class="right-desc">Correct inaccurate or incomplete personal data.</div></div>
+      <div class="right-card"><div class="right-title">&#128465;&#65039; Right to Erasure</div><div class="right-desc">Request deletion of your data, subject to legal retention requirements.</div></div>
+      <div class="right-card"><div class="right-title">&#128230; Right to Portability</div><div class="right-desc">Receive your data in a structured, machine-readable format.</div></div>
+      <div class="right-card"><div class="right-title">&#9940; Right to Object</div><div class="right-desc">Object to processing based on legitimate interests or for direct marketing.</div></div>
+      <div class="right-card"><div class="right-title">&#128274; Right to Restriction</div><div class="right-desc">Restrict how we use your data while a dispute is resolved.</div></div>
+      <div class="right-card"><div class="right-title">&#8617;&#65039; Withdraw Consent</div><div class="right-desc">Withdraw marketing consent at any time.</div></div>
+      <div class="right-card"><div class="right-title">&#127963;&#65039; Right to Complain</div><div class="right-desc">Lodge a complaint with the ICO at ico.org.uk or call 0303 123 1113.</div></div>
+    </div>
+    <p style="margin-top:16px">Email <a href="mailto:privacy@rideway.co.uk">privacy@rideway.co.uk</a> to exercise any right. We respond within <strong>30 days</strong>. You can also delete your account in-app under <em>Profile &#8594; Settings &#8594; Delete Account</em>.</p>
+  </section>
+
+  <section class="section" id="s9">
+    <div class="section-header"><div class="section-num">09</div><h2>Cookies &amp; Tracking</h2></div>
+    <p>The <strong>Rideway mobile app</strong> does not use cookies. It uses device storage to retain authentication tokens locally on your device.</p>
+    <p>If you visit <strong>rideway.co.uk</strong>, our website may use essential cookies for security and session management only. We do not use advertising or tracking cookies.</p>
+  </section>
+
+  <section class="section" id="s10">
+    <div class="section-header"><div class="section-num">10</div><h2>Children</h2></div>
+    <p>Rideway is not intended for use by anyone under the age of <strong>18</strong>. We do not knowingly collect data from under-18s. If you believe a child has provided us with their data, contact <a href="mailto:privacy@rideway.co.uk">privacy@rideway.co.uk</a> and we will delete it promptly.</p>
+  </section>
+
+  <section class="section" id="s11">
+    <div class="section-header"><div class="section-num">11</div><h2>Security</h2></div>
+    <ul>
+      <li>All data is transmitted over encrypted HTTPS (TLS 1.2+)</li>
+      <li>Passwords are hashed — we never store plain-text passwords</li>
+      <li>Payment card data is handled entirely by Stripe (PCI DSS Level 1) — we do not store card numbers</li>
+      <li>Authentication tokens expire after 30 minutes with secure refresh token rotation</li>
+      <li>Identity verification documents are stored in encrypted, access-controlled storage</li>
+    </ul>
+    <p>In the event of a data breach posing risk to individuals, we will notify the ICO within <strong>72 hours</strong> and affected users without undue delay, as required by UK GDPR Article 33.</p>
+  </section>
+
+  <section class="section" id="s12">
+    <div class="section-header"><div class="section-num">12</div><h2>Changes &amp; Contact</h2></div>
+    <p>We may update this policy from time to time. We will notify you via the app or email before material changes take effect. The date at the top of this page reflects the most recent update.</p>
+    <h3>Contact Us</h3>
+    <div class="contact-box">
+      <p><strong>Data Controller:</strong> Rideway Ltd, United Kingdom</p>
+      <p><strong>Privacy enquiries:</strong> <a href="mailto:privacy@rideway.co.uk">privacy@rideway.co.uk</a></p>
+      <p><strong>General support:</strong> <a href="mailto:support@rideway.co.uk">support@rideway.co.uk</a></p>
+      <p><strong>Account deletion:</strong> <a href="https://api.rideway.co.uk/delete-account">rideway.co.uk/delete-account</a></p>
+    </div>
+    <h3>ICO — UK Supervisory Authority</h3>
+    <ul>
+      <li>Website: <a href="https://ico.org.uk">ico.org.uk</a></li>
+      <li>Phone: 0303 123 1113</li>
+      <li>Post: Information Commissioner's Office, Wycliffe House, Water Lane, Wilmslow, SK9 5AF</li>
+    </ul>
+  </section>
+
+  <footer class="policy-footer">
+    <span>&copy; 2026 Rideway Ltd. All rights reserved.</span>
+    <span><a href="https://api.rideway.co.uk/delete-account">Delete Account</a> &middot; <a href="https://rideway.co.uk">rideway.co.uk</a></span>
+  </footer>
+</div>
+</body>
+</html>

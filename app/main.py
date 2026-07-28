@@ -6,7 +6,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
@@ -64,6 +64,14 @@ def create_app() -> FastAPI:
     @app.get("/health")
     def health():
         return {"status": "ok"}
+
+    @app.get("/privacy", response_class=FileResponse, include_in_schema=False)
+    def privacy_policy():
+        return FileResponse(str(Path(__file__).resolve().parent / "static" / "privacy.html"))
+
+    @app.get("/delete-account", response_class=FileResponse, include_in_schema=False)
+    def delete_account():
+        return FileResponse(str(Path(__file__).resolve().parent / "static" / "delete-account.html"))
 
     @app.get("/google-site-verification", response_class=HTMLResponse, include_in_schema=False)
     def google_site_verification():
