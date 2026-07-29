@@ -24,10 +24,10 @@ class ReviewCreate(BaseModel):
 class ReviewResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: str
-    trip_id: str
-    reviewer_id: str
-    reviewee_id: str
+    id: UUID
+    trip_id: UUID
+    reviewer_id: UUID
+    reviewee_id: UUID
     rating: int
     comment: str | None
     created_at: datetime

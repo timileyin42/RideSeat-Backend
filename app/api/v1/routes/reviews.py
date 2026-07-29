@@ -1,6 +1,10 @@
 """Review routes."""
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
+
+logger = logging.getLogger(__name__)
 from sqlalchemy.orm import Session
 from uuid import UUID
 
@@ -40,6 +44,10 @@ def create_review(
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        db.rollback()
+        logger.exception("Unexpected error in create_review")
+        raise HTTPException(status_code=500, detail="Review processing error") from exc
 
 
 @router.get("/user/{user_id}", response_model=DataResponse[list[ReviewResponse]])
