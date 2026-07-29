@@ -1,6 +1,10 @@
 """Notification routes."""
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query
+
+logger = logging.getLogger(__name__)
 from sqlalchemy.orm import Session
 from uuid import UUID
 
@@ -34,10 +38,14 @@ def register_device(
             payload.app_version,
         )
         db.commit()
-        return DataResponse(data=device)
+        return DataResponse(data=DeviceResponse.model_validate(device))
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        db.rollback()
+        logger.exception("Unexpected error in register_device")
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @router.get("", response_model=DataResponse[list[NotificationResponse]])
