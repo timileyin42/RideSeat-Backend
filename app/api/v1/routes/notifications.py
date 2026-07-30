@@ -69,21 +69,23 @@ def send_notification(
     current_user=Depends(get_current_user),
 ):
     data: dict[str, str] = {}
+    incoming = payload.data
 
-    if payload.other_user_id:
-        other_user = user_repo.get_by_id(db, payload.other_user_id)
-        if other_user:
-            data["other_user_id"] = str(payload.other_user_id)
-            data["other_user_name"] = f"{other_user.first_name or ''} {other_user.last_name or ''}".strip()
+    if incoming:
+        if incoming.other_user_id:
+            other_user = user_repo.get_by_id(db, incoming.other_user_id)
+            if other_user:
+                data["other_user_id"] = str(incoming.other_user_id)
+                data["other_user_name"] = f"{other_user.first_name or ''} {other_user.last_name or ''}".strip()
 
-    if payload.trip_id:
-        trip = trip_repo.get_by_id(db, payload.trip_id)
-        if trip:
-            data["trip_id"] = str(payload.trip_id)
-            data["route_summary"] = f"{trip.origin_city} → {trip.destination_city}"
+        if incoming.trip_id:
+            trip = trip_repo.get_by_id(db, incoming.trip_id)
+            if trip:
+                data["trip_id"] = str(incoming.trip_id)
+                data["route_summary"] = f"{trip.origin_city} → {trip.destination_city}"
 
-    if payload.booking_id:
-        data["booking_id"] = str(payload.booking_id)
+        if incoming.booking_id:
+            data["booking_id"] = str(incoming.booking_id)
 
     notification_service.create_notification(
         db,
