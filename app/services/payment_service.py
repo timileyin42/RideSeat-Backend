@@ -277,26 +277,33 @@ class PaymentService:
         payment.stripe_transfer_id = transfer.id
         return self.payment_repo.update(db, payment)
 
-    def handle_webhook(self, db: Session, payload: bytes, sig_header: str) -> Payment:
+    def verify_webhook_signature(self, payload: bytes, sig_header: str) -> dict:
+        """Validate Stripe signature and return the parsed event dict.
+        Raises ValueError on invalid signature. No DB access — safe to call in the request handler.
+        """
         settings = get_settings()
         if not settings.stripe_webhook_secret:
             raise ValueError("Payments are not yet enabled")
+        self._configured_stripe()
         try:
             event = stripe.Webhook.construct_event(payload, sig_header, settings.stripe_webhook_secret)
         except stripe.SignatureVerificationError as exc:
             raise ValueError("Invalid webhook signature") from exc
+        return dict(event)
+
+    def process_webhook_event(self, db: Session, event: dict) -> Payment | None:
+        """Process a pre-verified Stripe event dict. Called from the Celery worker."""
+        event_id = event["id"]
 
         # Deduplicate: Stripe delivers at-least-once; same event_id within 24h is a replay
-        event_id = event["id"]
         try:
             r = _redis_client()
             key = _WEBHOOK_KEY.format(event_id)
             already_processed = not r.set(key, "1", nx=True, ex=_WEBHOOK_DEDUP_TTL)
             if already_processed:
                 logger.info("Duplicate Stripe webhook ignored", extra={"event_id": event_id})
-                raise ValueError(f"Duplicate event: {event_id}")
+                return None
         except redis.RedisError:
-            # Redis unavailable — log and continue; better to double-process than to drop
             logger.warning("Redis unavailable for webhook dedup, processing anyway", extra={"event_id": event_id})
 
         event_type = event["type"]
@@ -308,7 +315,8 @@ class PaymentService:
             "payment_intent.payment_failed",
             "payment_intent.canceled",
         ):
-            raise ValueError(f"Unhandled event type: {event_type}")
+            logger.info("Unhandled Stripe event type ignored", extra={"event_type": event_type})
+            return None
 
         booking_id_str = (data_object.get("metadata") or {}).get("booking_id")
         if not booking_id_str:
@@ -332,6 +340,11 @@ class PaymentService:
             payment.status = PaymentStatus.FAILED
 
         return self.payment_repo.update(db, payment)
+
+    def handle_webhook(self, db: Session, payload: bytes, sig_header: str) -> Payment | None:
+        """Legacy synchronous handler — kept for backwards compatibility. Prefer the queued path."""
+        event = self.verify_webhook_signature(payload, sig_header)
+        return self.process_webhook_event(db, event)
 
     def _confirm_booking(self, db: Session, booking_id: UUID) -> None:
         from app.repositories.booking_repo import BookingRepository

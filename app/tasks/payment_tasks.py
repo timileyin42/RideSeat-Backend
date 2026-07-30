@@ -118,9 +118,38 @@ def cancel_expired_pending_payments() -> None:
         db.close()
 
 
+@celery_app.task(
+    name="app.tasks.payment_tasks.process_stripe_webhook",
+    bind=True,
+    max_retries=5,
+    acks_late=True,
+    reject_on_worker_lost=True,
+    queue="payments",
+)
+def process_stripe_webhook(task: Task, event: dict) -> None:
+    """Process a pre-verified Stripe event. Retries with exponential backoff on failure."""
+    service = _build_payment_service()
+    db = __import__("app.core.database", fromlist=["create_db_session"]).create_db_session()
+    try:
+        service.process_webhook_event(db, event)
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        if task.request.retries >= task.max_retries:
+            _on_failure(task.name, task.request.id, [event.get("id")], exc)
+            return
+        raise task.retry(exc=exc, countdown=30 * (2 ** task.request.retries))
+    finally:
+        db.close()
+
+
 def enqueue_payment_intent(payment_id: UUID) -> None:
     process_payment_intent.delay(str(payment_id))
 
 
 def enqueue_payout(booking_id: UUID) -> None:
     process_payout.delay(str(booking_id))
+
+
+def enqueue_stripe_webhook(event: dict) -> None:
+    process_stripe_webhook.delay(event)

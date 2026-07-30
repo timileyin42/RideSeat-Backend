@@ -9,6 +9,7 @@ from uuid import UUID
 logger = logging.getLogger(__name__)
 
 from app.core.dependencies import get_current_user, get_db, rate_limit
+from app.tasks.payment_tasks import enqueue_stripe_webhook
 from app.repositories.booking_repo import BookingRepository
 from app.repositories.payment_repo import PaymentRepository
 from app.repositories.trip_repo import TripRepository
@@ -54,18 +55,14 @@ def create_payment_intent(
 async def stripe_webhook(
     request: Request,
     stripe_signature: str = Header(default="", alias="stripe-signature"),
-    db: Session = Depends(get_db),
 ):
+    payload = await request.body()
     try:
-        payload = await request.body()
-        payment_service.handle_webhook(db, payload, stripe_signature)
-        db.commit()
-        return {"received": True}
+        event = payment_service.verify_webhook_signature(payload, stripe_signature)
     except ValueError as exc:
-        db.rollback()
-        if "Unhandled event type" in str(exc):
-            return {"received": True}
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    enqueue_stripe_webhook(event)
+    return {"received": True}
 
 
 @router.get("/history", response_model=DataResponse[list[PaymentResponse]])
