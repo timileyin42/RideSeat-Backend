@@ -95,7 +95,7 @@ def send_notification(
     notification_service.create_notification(
         db,
         payload.recipient_id,
-        payload.type,
+        payload.notification_type,
         payload.title,
         payload.body,
         data=data or None,
