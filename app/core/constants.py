@@ -76,6 +76,9 @@ class NotificationType(StrEnum):
     MESSAGE_RECEIVED = "MESSAGE_RECEIVED"
     REVIEW_RECEIVED = "REVIEW_RECEIVED"
     GENERAL = "GENERAL"
+    CHAT = "CHAT"
+    PAYMENT = "PAYMENT"
+    BOOKING = "BOOKING"
 
 
 class IdentityVerificationStatus(StrEnum):
