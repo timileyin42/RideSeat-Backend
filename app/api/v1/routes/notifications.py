@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 from sqlalchemy.orm import Session
 from uuid import UUID
 
+from app.core.constants import NotificationType
 from app.core.dependencies import get_current_user, get_db, rate_limit
 from app.repositories.device_repo import DeviceRepository
 from app.repositories.notification_repo import NotificationRepository
@@ -56,6 +57,23 @@ def list_notifications(
     offset: int = Query(default=0, ge=0),
 ):
     return DataResponse(data=notification_service.list_notifications(db, current_user, limit=limit, offset=offset))
+
+
+@router.post("/test", response_model=DataResponse[dict])
+def send_test_notification(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Send a test push notification to the current user's registered devices."""
+    notification_service.create_notification(
+        db,
+        current_user.id,
+        NotificationType.GENERAL,
+        "Test notification",
+        "If you see this, push notifications are working!",
+    )
+    db.commit()
+    return DataResponse(data={"message": "Test notification sent"})
 
 
 @router.post("/{notification_id}/read", response_model=DataResponse[NotificationResponse])

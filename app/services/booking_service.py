@@ -75,6 +75,7 @@ class BookingService:
         self.payment_service.trigger_payout_background(booking.id)
 
     def _handle_cancellation(self, db: Session, booking: Booking, trip, actor: User) -> None:
+        self.payment_service.refund_for_cancellation(db, booking.id, trip.departure_time)
         passenger = self.user_repo.get_by_id(db, booking.passenger_id)
         driver = self.user_repo.get_by_id(db, trip.driver_id)
         if actor.id == booking.passenger_id and driver:

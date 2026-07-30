@@ -55,6 +55,7 @@ class PaymentStatus(StrEnum):
     PROCESSING = "PROCESSING"
     SUCCEEDED = "SUCCEEDED"
     FAILED = "FAILED"
+    REFUNDED = "REFUNDED"
 
 
 class ReviewRatingRange(StrEnum):
@@ -74,6 +75,7 @@ class NotificationType(StrEnum):
     TRIP_COMPLETED = "TRIP_COMPLETED"
     MESSAGE_RECEIVED = "MESSAGE_RECEIVED"
     REVIEW_RECEIVED = "REVIEW_RECEIVED"
+    GENERAL = "GENERAL"
 
 
 class IdentityVerificationStatus(StrEnum):

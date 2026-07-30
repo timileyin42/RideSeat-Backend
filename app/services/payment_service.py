@@ -168,6 +168,43 @@ class PaymentService:
     def trigger_payout_background(self, booking_id: UUID) -> None:
         celery_app.send_task("app.tasks.payment_tasks.process_payout", args=[str(booking_id)])
 
+    def refund_for_cancellation(self, db: Session, booking_id: UUID, departure_time) -> Payment | None:
+        """Issue a full or partial Stripe refund based on how close to departure the cancellation is.
+
+        >2 days before departure → 100% refund
+        ≤2 days before departure → 50% refund
+        No payment or payment not succeeded → no-op
+        """
+        payment = self.payment_repo.get_by_booking(db, booking_id)
+        if not payment or payment.status != PaymentStatus.SUCCEEDED:
+            return None
+        if not payment.stripe_payment_intent_id:
+            return None
+
+        from app.utils.datetime import ensure_utc
+        now = now_utc()
+        dep = ensure_utc(departure_time)
+        hours_until_departure = (dep - now).total_seconds() / 3600
+
+        full_amount_pence = int(float(payment.amount) * 100)
+        if hours_until_departure > 48:
+            refund_amount = full_amount_pence  # 100%
+        else:
+            refund_amount = full_amount_pence // 2  # 50%
+
+        self._configured_stripe()
+        try:
+            stripe.Refund.create(
+                payment_intent=payment.stripe_payment_intent_id,
+                amount=refund_amount,
+                idempotency_key=f"refund:{payment.id}",
+            )
+        except stripe.StripeError as exc:
+            raise ValueError(f"Refund failed: {exc.user_message or str(exc)}") from exc
+
+        payment.status = PaymentStatus.REFUNDED
+        return self.payment_repo.update(db, payment)
+
     def process_payout(self, booking_id: str | UUID) -> None:
         booking_uuid = UUID(booking_id) if isinstance(booking_id, str) else booking_id
         db = create_db_session()
