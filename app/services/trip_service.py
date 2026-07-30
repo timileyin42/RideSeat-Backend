@@ -85,9 +85,19 @@ class TripService:
                 )
             ).scalars().all()
         )
+        passenger_ids = {b.passenger_id for b in confirmed}
         for booking in confirmed:
             booking.status = BookingStatus.COMPLETED
             db.add(booking)
+
+        from app.models.user import User as _User
+        from sqlalchemy import select as _sel2
+        affected_ids = list(passenger_ids | {trip.driver_id})
+        users = db.execute(_sel2(_User).where(_User.id.in_(affected_ids))).scalars().all()
+        for u in users:
+            u.trips_completed += 1
+            db.add(u)
+
         db.flush()
         updated = self.trip_repo.update(db, trip)
         return self._to_response(db, updated)
