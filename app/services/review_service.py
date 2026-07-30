@@ -38,6 +38,8 @@ class ReviewService:
         booking = self.booking_repo.get_by_trip_and_passenger(db, trip_id, reviewer.id)
         if not booking or booking.status != BookingStatus.COMPLETED:
             raise ValueError("Review allowed only after trip completion")
+        if self.review_repo.get_by_trip_and_reviewer(db, trip_id, reviewer.id):
+            raise ValueError("You have already reviewed this trip")
         reviewee = self.user_repo.get_by_id(db, reviewee_id)
         if not reviewee:
             raise ValueError("Reviewee not found")
