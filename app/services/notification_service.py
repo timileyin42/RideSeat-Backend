@@ -121,6 +121,7 @@ class NotificationService:
         notification_type: NotificationType,
         title: str,
         body: str,
+        data: dict | None = None,
     ) -> Notification | None:
         user = self.user_repo.get_by_id(db, user_id)
         if not user:
@@ -134,6 +135,7 @@ class NotificationService:
                 notification_type=notification_type,
                 title=title,
                 body=body,
+                data=data,
             )
             notification = self.notification_repo.create(db, notification)
 
@@ -142,7 +144,7 @@ class NotificationService:
             devices = self.device_repo.list_by_user(db, user_id)
             stale_tokens: list[Device] = []
             for device in devices:
-                sent = self._send_push(device.device_token, title, body, notification_type)
+                sent = self._send_push(device.device_token, title, body, notification_type, data)
                 if not sent:
                     stale_tokens.append(device)
             for device in stale_tokens:
@@ -167,6 +169,7 @@ class NotificationService:
         title: str,
         body: str,
         notification_type: NotificationType,
+        extra_data: dict | None = None,
     ) -> bool:
         """Send an FCM push notification. Returns False if the token is invalid/expired."""
         creds_json = self.settings.gcp_credentials_json
@@ -178,9 +181,14 @@ class NotificationService:
 
             app = _get_firebase_app(creds_json)
 
+            fcm_data = {"type": notification_type.value}
+            if extra_data:
+                # FCM data values must be strings
+                fcm_data.update({k: str(v) for k, v in extra_data.items()})
+
             message = messaging.Message(
                 notification=messaging.Notification(title=title, body=body),
-                data={"type": notification_type.value},
+                data=fcm_data,
                 token=device_token,
                 android=messaging.AndroidConfig(
                     priority="high",

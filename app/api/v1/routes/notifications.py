@@ -71,6 +71,7 @@ def send_notification(
         payload.notification_type,
         payload.title,
         payload.body,
+        data=payload.data,
     )
     db.commit()
     return DataResponse(data={"message": "Notification sent"})
