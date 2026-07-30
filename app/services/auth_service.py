@@ -117,7 +117,7 @@ class AuthService:
         user.password_hash = hash_password(new_password)
         self.user_repo.update(db, user)
 
-    def google_auth(self, db: Session, id_token: str) -> tuple[User, str, str]:
+    def google_auth(self, db: Session, id_token: str) -> tuple[User, str, str, bool]:
         if not id_token:
             raise ValueError("Invalid Google token")
         token_info = self._verify_google_id_token(id_token)
@@ -125,7 +125,9 @@ class AuthService:
         if not email:
             raise ValueError("Google token missing email")
         user = self.user_repo.get_by_email(db, email)
+        is_new_user = False
         if not user:
+            is_new_user = True
             first_name = token_info.get("given_name") or token_info.get("name") or "Google"
             last_name = token_info.get("family_name") or "User"
             user = User(
@@ -142,7 +144,7 @@ class AuthService:
             user = self.user_repo.update(db, user)
         user = self._sync_google_profile(db, user, token_info)
         access_token, refresh_token = self._issue_tokens(user)
-        return user, access_token, refresh_token
+        return user, access_token, refresh_token, is_new_user
 
     def get_google_authorization_url(self, state: str | None = None) -> str:
         settings = get_settings()

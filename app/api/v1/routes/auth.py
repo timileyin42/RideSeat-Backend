@@ -19,6 +19,7 @@ from app.schemas.auth import (
     VerifyEmailRequest,
 )
 from app.schemas.base import DataResponse
+from app.schemas.user import UserPrivateResponse
 from app.services.auth_service import AuthService
 from app.repositories.user_repo import UserRepository
 from app.services.email_service import EmailService
@@ -43,7 +44,8 @@ def register(
             date_of_birth=payload.date_of_birth,
         )
         db.commit()
-        return DataResponse(data=AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user))
+        user_response = UserPrivateResponse.model_validate(user).model_copy(update={"is_new_user": True})
+        return DataResponse(data=AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user_response))
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -92,7 +94,8 @@ async def login(
         if not email or not password:
             raise ValueError("Invalid credentials")
         user, access_token, refresh_token = auth_service.login(db, email, password)
-        return DataResponse(data=AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user))
+        user_response = UserPrivateResponse.model_validate(user).model_copy(update={"is_new_user": False})
+        return DataResponse(data=AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user_response))
     except ValueError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
 
@@ -100,9 +103,10 @@ async def login(
 @router.post("/google", response_model=DataResponse[AuthTokenResponse])
 def google_auth(payload: GoogleAuthRequest, db: Session = Depends(get_db)):
     try:
-        user, access_token, refresh_token = auth_service.google_auth(db, payload.id_token)
+        user, access_token, refresh_token, is_new_user = auth_service.google_auth(db, payload.id_token)
         db.commit()
-        return DataResponse(data=AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user))
+        user_response = UserPrivateResponse.model_validate(user).model_copy(update={"is_new_user": is_new_user})
+        return DataResponse(data=AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user_response))
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -115,9 +119,10 @@ def google_mobile_auth(
     _=Depends(rate_limit("auth_google_mobile", limit=10, window_seconds=60)),
 ):
     try:
-        user, access_token, refresh_token = auth_service.google_auth(db, payload.id_token)
+        user, access_token, refresh_token, is_new_user = auth_service.google_auth(db, payload.id_token)
         db.commit()
-        return DataResponse(data=AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user))
+        user_response = UserPrivateResponse.model_validate(user).model_copy(update={"is_new_user": is_new_user})
+        return DataResponse(data=AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user_response))
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc

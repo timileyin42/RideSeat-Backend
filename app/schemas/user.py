@@ -97,6 +97,7 @@ class UserPrivateResponse(UserPublicResponse):
     driver_license_number: str | None = None
     identity_verification_status: IdentityVerificationStatus | None = None
     created_at: datetime
+    is_new_user: bool = False
 
 
 class OnboardingRequest(BaseModel):
