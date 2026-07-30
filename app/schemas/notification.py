@@ -12,6 +12,7 @@ class NotificationData(BaseModel):
     trip_id: UUID | None = None
     booking_id: UUID | None = None
     other_user_id: UUID | None = None
+    route_summary: str | None = None
 
 
 class SendNotificationRequest(BaseModel):

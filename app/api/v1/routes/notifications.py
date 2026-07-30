@@ -79,10 +79,15 @@ def send_notification(
                 data["other_user_name"] = f"{other_user.first_name or ''} {other_user.last_name or ''}".strip()
 
         if incoming.trip_id:
-            trip = trip_repo.get_by_id(db, incoming.trip_id)
-            if trip:
-                data["trip_id"] = str(incoming.trip_id)
-                data["route_summary"] = f"{trip.origin_city} → {trip.destination_city}"
+            data["trip_id"] = str(incoming.trip_id)
+            if incoming.route_summary:
+                data["route_summary"] = incoming.route_summary
+            else:
+                trip = trip_repo.get_by_id(db, incoming.trip_id)
+                if trip:
+                    data["route_summary"] = f"{trip.origin_city} → {trip.destination_city}"
+        elif incoming.route_summary:
+            data["route_summary"] = incoming.route_summary
 
         if incoming.booking_id:
             data["booking_id"] = str(incoming.booking_id)
