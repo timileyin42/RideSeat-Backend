@@ -127,6 +127,9 @@ class NotificationService:
         if not user:
             return None
 
+        # Always include type in data so Flutter can route from both push and in-app
+        enriched_data = {"type": notification_type.value, **(data or {})}
+
         # 1. In-app notification (stored in DB)
         notification = None
         if user.notify_in_app:
@@ -135,7 +138,7 @@ class NotificationService:
                 notification_type=notification_type,
                 title=title,
                 body=body,
-                data=data,
+                data=enriched_data,
             )
             notification = self.notification_repo.create(db, notification)
 
@@ -144,7 +147,7 @@ class NotificationService:
             devices = self.device_repo.list_by_user(db, user_id)
             stale_tokens: list[Device] = []
             for device in devices:
-                sent = self._send_push(device.device_token, title, body, notification_type, data)
+                sent = self._send_push(device.device_token, title, body, enriched_data)
                 if not sent:
                     stale_tokens.append(device)
             for device in stale_tokens:
@@ -168,7 +171,6 @@ class NotificationService:
         device_token: str,
         title: str,
         body: str,
-        notification_type: NotificationType,
         extra_data: dict | None = None,
     ) -> bool:
         """Send an FCM push notification. Returns False if the token is invalid/expired."""
@@ -181,10 +183,8 @@ class NotificationService:
 
             app = _get_firebase_app(creds_json)
 
-            fcm_data = {"type": notification_type.value}
-            if extra_data:
-                # FCM data values must be strings
-                fcm_data.update({k: str(v) for k, v in extra_data.items()})
+            # FCM data values must all be strings
+            fcm_data = {k: str(v) for k, v in (extra_data or {}).items()}
 
             message = messaging.Message(
                 notification=messaging.Notification(title=title, body=body),
