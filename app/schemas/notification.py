@@ -20,7 +20,7 @@ class SendNotificationRequest(BaseModel):
             "recipient_id": "861fbb9c-8b42-43cc-b2c3-94d4cae97319",
             "title": "New message from James",
             "body": "Hey, I'm 5 minutes away!",
-            "notification_type": "CHAT",
+            "type": "CHAT",
             "data": {
                 "trip_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
                 "booking_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
@@ -32,7 +32,7 @@ class SendNotificationRequest(BaseModel):
     recipient_id: UUID
     title: str = Field(min_length=1, max_length=100)
     body: str = Field(min_length=1, max_length=500)
-    notification_type: NotificationType = NotificationType.GENERAL
+    type: NotificationType = NotificationType.GENERAL
     data: NotificationData | None = None
 
 
