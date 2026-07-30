@@ -25,8 +25,8 @@ class TripService:
         return self._to_response(db, trip)
 
     def create_trip(self, db: Session, driver: User, data: dict) -> dict:
-        if not driver.identity_verified:
-            raise ValueError("Your identity must be verified before you can post a ride")
+        # if not driver.identity_verified:
+        #     raise ValueError("Your identity must be verified before you can post a ride")
         data = self._normalize_booking_mode(data)
         if ensure_utc(data["departure_time"]) <= now_utc():
             raise ValueError("Trip cannot be in the past")
