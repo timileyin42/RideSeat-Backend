@@ -183,25 +183,25 @@ class NotificationService:
 
             app = _get_firebase_app(creds_json)
 
-            # FCM data values must all be strings
-            fcm_data = {k: str(v) for k, v in (extra_data or {}).items()}
+            # FCM data values must all be strings; include title + body so Flutter
+            # can show a local notification with the correct text
+            fcm_data = {"title": title, "body": body}
+            fcm_data.update({k: str(v) for k, v in (extra_data or {}).items()})
 
+            # Data-only message — no notification block so Flutter's onMessage/
+            # onBackgroundMessage fires in ALL app states (foreground, background, killed).
+            # Glory shows the notification herself via flutter_local_notifications.
             message = messaging.Message(
-                notification=messaging.Notification(title=title, body=body),
                 data=fcm_data,
                 token=device_token,
                 android=messaging.AndroidConfig(
                     priority="high",
-                    notification=messaging.AndroidNotification(
-                        sound="default",
-                        channel_id="rideway_notifications",
-                        click_action="FLUTTER_NOTIFICATION_CLICK",
-                    ),
                 ),
                 apns=messaging.APNSConfig(
                     payload=messaging.APNSPayload(
-                        aps=messaging.Aps(sound="default", badge=1),
+                        aps=messaging.Aps(content_available=True),
                     ),
+                    headers={"apns-priority": "5"},
                 ),
             )
             messaging.send(message, app=app)
