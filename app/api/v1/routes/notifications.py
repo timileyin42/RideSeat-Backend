@@ -15,7 +15,7 @@ from app.repositories.notification_repo import NotificationRepository
 from app.repositories.user_repo import UserRepository
 from app.schemas.device import DeviceRegistrationRequest, DeviceResponse
 from app.schemas.base import DataResponse
-from app.schemas.notification import NotificationResponse
+from app.schemas.notification import NotificationResponse, SendNotificationRequest
 from app.services.notification_service import NotificationService
 
 router = APIRouter()
@@ -59,21 +59,21 @@ def list_notifications(
     return DataResponse(data=notification_service.list_notifications(db, current_user, limit=limit, offset=offset))
 
 
-@router.post("/test", response_model=DataResponse[dict])
-def send_test_notification(
+@router.post("/send", response_model=DataResponse[dict])
+def send_notification(
+    payload: SendNotificationRequest,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    """Send a test push notification to the current user's registered devices."""
     notification_service.create_notification(
         db,
-        current_user.id,
+        payload.recipient_id,
         NotificationType.GENERAL,
-        "Test notification",
-        "If you see this, push notifications are working!",
+        payload.title,
+        payload.body,
     )
     db.commit()
-    return DataResponse(data={"message": "Test notification sent"})
+    return DataResponse(data={"message": "Notification sent"})
 
 
 @router.post("/{notification_id}/read", response_model=DataResponse[NotificationResponse])
