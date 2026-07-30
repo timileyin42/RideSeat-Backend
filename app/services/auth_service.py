@@ -32,7 +32,7 @@ class AuthService:
     ) -> tuple[User, str, str]:
         existing = self.user_repo.get_by_email(db, email)
         if existing:
-            raise ValueError("Email already registered")
+            raise ValueError("Email already registered, please login to verify your account")
         
         # Parse date_of_birth if provided
         parsed_dob = None
