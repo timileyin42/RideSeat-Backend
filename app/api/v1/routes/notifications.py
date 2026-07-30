@@ -12,6 +12,7 @@ from app.core.constants import NotificationType
 from app.core.dependencies import get_current_user, get_db, rate_limit
 from app.repositories.device_repo import DeviceRepository
 from app.repositories.notification_repo import NotificationRepository
+from app.repositories.trip_repo import TripRepository
 from app.repositories.user_repo import UserRepository
 from app.schemas.device import DeviceRegistrationRequest, DeviceResponse
 from app.schemas.base import DataResponse
@@ -20,6 +21,8 @@ from app.services.notification_service import NotificationService
 
 router = APIRouter()
 notification_service = NotificationService(DeviceRepository(), NotificationRepository(), UserRepository())
+user_repo = UserRepository()
+trip_repo = TripRepository()
 
 
 @router.post("/devices/register", response_model=DataResponse[DeviceResponse], status_code=201)
@@ -65,13 +68,30 @@ def send_notification(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    data: dict[str, str] = {}
+
+    if payload.other_user_id:
+        other_user = user_repo.get_by_id(db, payload.other_user_id)
+        if other_user:
+            data["other_user_id"] = str(payload.other_user_id)
+            data["other_user_name"] = f"{other_user.first_name or ''} {other_user.last_name or ''}".strip()
+
+    if payload.trip_id:
+        trip = trip_repo.get_by_id(db, payload.trip_id)
+        if trip:
+            data["trip_id"] = str(payload.trip_id)
+            data["route_summary"] = f"{trip.origin_city} → {trip.destination_city}"
+
+    if payload.booking_id:
+        data["booking_id"] = str(payload.booking_id)
+
     notification_service.create_notification(
         db,
         payload.recipient_id,
         payload.notification_type,
         payload.title,
         payload.body,
-        data=payload.data,
+        data=data or None,
     )
     db.commit()
     return DataResponse(data={"message": "Notification sent"})
