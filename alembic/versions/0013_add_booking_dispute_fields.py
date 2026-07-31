@@ -17,8 +17,8 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("bookings", sa.Column("is_disputed", sa.Boolean(), nullable=False, server_default="false"))
-    op.add_column("bookings", sa.Column("dispute_reason", sa.Text(), nullable=True))
+    op.execute("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS is_disputed BOOLEAN NOT NULL DEFAULT false")
+    op.execute("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS dispute_reason TEXT")
 
 
 def downgrade() -> None:

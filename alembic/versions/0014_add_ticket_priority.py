@@ -20,15 +20,7 @@ ticketpriority_enum = sa.Enum("LOW", "MEDIUM", "HIGH", name="ticketpriority")
 
 def upgrade() -> None:
     ticketpriority_enum.create(op.get_bind(), checkfirst=True)
-    op.add_column(
-        "tickets",
-        sa.Column(
-            "priority",
-            ticketpriority_enum,
-            nullable=False,
-            server_default="MEDIUM",
-        ),
-    )
+    op.execute("ALTER TABLE tickets ADD COLUMN IF NOT EXISTS priority ticketpriority NOT NULL DEFAULT 'MEDIUM'")
 
 
 def downgrade() -> None:
