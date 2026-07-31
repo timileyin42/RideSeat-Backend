@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import cast, Date, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.constants import BookingStatus
@@ -99,6 +99,23 @@ class BookingRepository:
             Booking.created_at < before,
         )
         return list(db.execute(stmt).scalars().all())
+
+    def bookings_timeseries(self, db: Session, days: int = 7) -> list[dict]:
+        """Daily booking count for the last N days."""
+        from datetime import timedelta
+        from app.utils.datetime import now_utc
+        since = now_utc() - timedelta(days=days)
+        stmt = (
+            select(
+                cast(Booking.created_at, Date).label("date"),
+                func.count(Booking.id).label("value"),
+            )
+            .where(Booking.created_at >= since)
+            .group_by(cast(Booking.created_at, Date))
+            .order_by(cast(Booking.created_at, Date))
+        )
+        rows = db.execute(stmt).all()
+        return [{"date": str(row.date), "value": int(row.value)} for row in rows]
 
     def has_confirmed_booking_between(self, db: Session, driver_id: UUID, passenger_id: UUID) -> bool:
         stmt = (

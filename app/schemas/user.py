@@ -98,6 +98,7 @@ class UserPrivateResponse(UserPublicResponse):
     identity_verification_status: IdentityVerificationStatus | None = None
     created_at: datetime
     is_new_user: bool = False
+    is_admin: bool = False
 
 
 class OnboardingRequest(BaseModel):

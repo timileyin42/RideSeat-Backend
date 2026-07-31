@@ -1,6 +1,7 @@
 """Authentication routes."""
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user, get_db, rate_limit
@@ -219,6 +220,87 @@ def refresh_token(
         ))
     except ValueError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
+
+
+@router.get("/google/authorize")
+def google_web_authorize(
+    state: str | None = Query(default=None),
+    redirect_uri: str | None = Query(default=None),
+):
+    """Redirect browser to Google OAuth consent screen for web sign-in."""
+    try:
+        from app.core.config import get_settings
+        import urllib.parse as _parse
+        settings = get_settings()
+        if not settings.google_client_id:
+            raise ValueError("Google OAuth not configured")
+        effective_redirect = redirect_uri or getattr(settings, "google_web_redirect_uri", None)
+        if not effective_redirect:
+            raise ValueError("No redirect_uri configured for web OAuth")
+        import secrets as _secrets
+        params = {
+            "client_id": settings.google_client_id,
+            "redirect_uri": effective_redirect,
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": state or _secrets.token_urlsafe(16),
+            "access_type": "offline",
+            "prompt": "select_account",
+        }
+        url = "https://accounts.google.com/o/oauth2/v2/auth?" + _parse.urlencode(params)
+        return RedirectResponse(url=url)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/google/callback", response_model=DataResponse[AuthTokenResponse])
+def google_web_callback(
+    code: str = Query(...),
+    state: str | None = Query(default=None),
+    redirect_uri: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    """Exchange Google authorization code for app tokens (web redirect flow)."""
+    try:
+        import urllib.parse as _parse
+        import urllib.request as _req
+        import json as _json
+        from app.core.config import get_settings
+        settings = get_settings()
+        effective_redirect = redirect_uri or getattr(settings, "google_web_redirect_uri", None)
+        if not effective_redirect:
+            raise ValueError("No redirect_uri configured for web OAuth")
+
+        # Exchange code → id_token via Google token endpoint
+        token_payload = _parse.urlencode({
+            "code": code,
+            "client_id": settings.google_client_id,
+            "client_secret": settings.google_client_secret,
+            "redirect_uri": effective_redirect,
+            "grant_type": "authorization_code",
+        }).encode()
+        req = _req.Request(
+            "https://oauth2.googleapis.com/token",
+            data=token_payload,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        with _req.urlopen(req, timeout=10) as resp:
+            token_data = _json.loads(resp.read())
+
+        id_token_str = token_data.get("id_token")
+        if not id_token_str:
+            raise ValueError("Google did not return an id_token")
+
+        user, access_token, refresh_token, is_new_user = auth_service.google_auth(db, id_token_str)
+        db.commit()
+        user_response = UserPrivateResponse.model_validate(user).model_copy(update={"is_new_user": is_new_user})
+        return DataResponse(data=AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user_response))
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=502, detail="Google token exchange failed") from exc
 
 
 @router.post("/change-password", response_model=DataResponse[dict])

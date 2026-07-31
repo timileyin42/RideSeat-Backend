@@ -87,6 +87,12 @@ class IdentityVerificationStatus(StrEnum):
     REJECTED = "REJECTED"
 
 
+class TicketPriority(StrEnum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+
+
 class TicketCategory(StrEnum):
     HARASSMENT = "HARASSMENT"
     FRAUD = "FRAUD"

@@ -5,7 +5,16 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.core.constants import TicketCategory, TicketStatus
+from app.core.constants import TicketCategory, TicketPriority, TicketStatus
+
+
+class ReporterSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    first_name: str | None = None
+    last_name: str | None = None
+    email: str
 
 
 class TicketCreate(BaseModel):
@@ -46,10 +55,12 @@ class TicketResponse(BaseModel):
     reported_user_id: UUID | None
     trip_id: UUID | None
     category: TicketCategory
+    priority: TicketPriority = TicketPriority.MEDIUM
     subject: str
     description: str
     status: TicketStatus
     admin_note: str | None
     resolved_by: UUID | None
+    reporter: ReporterSummary | None = None
     created_at: datetime
     updated_at: datetime

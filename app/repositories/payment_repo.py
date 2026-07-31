@@ -1,9 +1,9 @@
 """Payment repository."""
 
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import cast, Date, func, select
 from sqlalchemy.orm import Session
 
 from app.core.constants import PaymentStatus
@@ -29,6 +29,35 @@ class PaymentRepository:
         db.add(payment)
         db.flush()
         return payment
+
+    def list_all(
+        self,
+        db: Session,
+        limit: int = 50,
+        offset: int = 0,
+        status: str | None = None,
+    ) -> list[Payment]:
+        stmt = select(Payment)
+        if status:
+            stmt = stmt.where(Payment.status == status)
+        stmt = stmt.order_by(Payment.created_at.desc()).offset(offset).limit(limit)
+        return list(db.execute(stmt).scalars().all())
+
+    def revenue_timeseries(self, db: Session, days: int = 7) -> list[dict]:
+        """Daily revenue for the last N days."""
+        from app.utils.datetime import now_utc
+        since = now_utc() - timedelta(days=days)
+        stmt = (
+            select(
+                cast(Payment.created_at, Date).label("date"),
+                func.coalesce(func.sum(Payment.amount), 0).label("value"),
+            )
+            .where(Payment.status == PaymentStatus.SUCCEEDED, Payment.created_at >= since)
+            .group_by(cast(Payment.created_at, Date))
+            .order_by(cast(Payment.created_at, Date))
+        )
+        rows = db.execute(stmt).all()
+        return [{"date": str(row.date), "value": float(row.value)} for row in rows]
 
     def list_pending_intents(self, db: Session, limit: int = 50) -> list[Payment]:
         stmt = (

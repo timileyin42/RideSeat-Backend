@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import DateTime, Enum, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.constants import TicketCategory, TicketStatus
+from app.core.constants import TicketCategory, TicketPriority, TicketStatus
 from app.core.database import Base
 
 
@@ -18,6 +18,7 @@ class Ticket(Base):
     reported_user_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     trip_id: Mapped[UUID | None] = mapped_column(ForeignKey("trips.id", ondelete="SET NULL"), nullable=True)
     category: Mapped[TicketCategory] = mapped_column(Enum(TicketCategory))
+    priority: Mapped[TicketPriority] = mapped_column(Enum(TicketPriority), default=TicketPriority.MEDIUM, server_default="MEDIUM")
     subject: Mapped[str] = mapped_column(String(200))
     description: Mapped[str] = mapped_column(Text)
     status: Mapped[TicketStatus] = mapped_column(Enum(TicketStatus), default=TicketStatus.OPEN)

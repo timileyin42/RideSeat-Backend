@@ -35,11 +35,13 @@
 // Success
 { "data": <payload> }
 
-// Error
-{ "detail": "Human-readable message" }
+// Error — all 4xx/5xx responses
+{ "data": null, "error": "Human-readable message" }
 ```
 
-`data` is always the typed payload. Never read directly off the root.
+> **Note:** The error envelope uses `error`, not `detail`. Always check `response.data.error` (or catch non-2xx status codes) — never read `detail` off the root.
+
+`data` is always the typed payload on success. Never read directly off the root.
 
 ---
 

@@ -69,11 +69,27 @@ class UserService:
         user.vehicle_photo_url = photo_url
         return self.user_repo.update(db, user)
 
-    def list_users(self, db: Session, actor: User, limit: int | None = None, offset: int | None = None) -> list[User]:
+    def list_users(
+        self,
+        db: Session,
+        actor: User,
+        limit: int | None = None,
+        offset: int | None = None,
+        search: str | None = None,
+        role: str | None = None,
+        verification_status: str | None = None,
+    ) -> list[User]:
         if not actor.is_admin:
             raise ValueError("Admin privileges required")
         pagination = normalize_pagination(limit, offset)
-        return self.user_repo.list_users(db, limit=pagination.limit, offset=pagination.offset)
+        return self.user_repo.list_users(
+            db,
+            limit=pagination.limit,
+            offset=pagination.offset,
+            search=search,
+            role=role,
+            verification_status=verification_status,
+        )
 
     def request_phone_verification(self, db: Session, phone_number: str, user=None) -> str:
         """Send OTP to phone_number. Saves to user profile if authenticated, else stores in Redis."""

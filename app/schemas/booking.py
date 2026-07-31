@@ -104,5 +104,7 @@ class BookingResponse(BaseModel):
     status: BookingStatus
     total_amount: float
     created_at: datetime
+    is_disputed: bool = False
+    dispute_reason: str | None = None
     trip: TripSummary | None = None
     passenger: PassengerSummary | None = None

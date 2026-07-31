@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, Numeric
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, Numeric, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.constants import BookingStatus
@@ -19,6 +19,8 @@ class Booking(Base):
     seats: Mapped[int] = mapped_column(Integer)
     status: Mapped[BookingStatus] = mapped_column(Enum(BookingStatus), default=BookingStatus.PENDING)
     total_amount: Mapped[float] = mapped_column(Numeric(10, 2))
+    is_disputed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="false")
+    dispute_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
