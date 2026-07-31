@@ -34,8 +34,10 @@ class TripRepository:
         stmt = select(Trip).options(selectinload(Trip.driver)).offset(offset).limit(limit)
         return list(db.execute(stmt).scalars().all())
 
-    def count_trips(self, db: Session) -> int:
+    def count_trips(self, db: Session, since=None) -> int:
         stmt = select(func.count(Trip.id))
+        if since is not None:
+            stmt = stmt.where(Trip.created_at >= since)
         return int(db.execute(stmt).scalar_one())
 
     def count_created_since(self, db: Session, since: datetime) -> int:

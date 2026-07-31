@@ -56,12 +56,8 @@ class StorageService:
         blob = bucket.blob(blob_name)
         blob.upload_from_string(content, content_type=content_type)
 
-        if folder_name in _PUBLIC_FOLDERS:
-            blob.make_public()
-            return blob.public_url
-
-        # Private — store the GCS path; use signed_url() to view
-        return f"gs://{self.settings.gcp_storage_bucket}/{blob_name}"
+        blob.make_public()
+        return blob.public_url
 
     def signed_url(self, gcs_path: str, expiry_minutes: int = 15) -> str:
         """Generate a time-limited signed URL for a private GCS object.

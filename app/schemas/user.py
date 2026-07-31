@@ -3,7 +3,7 @@
 from datetime import datetime, date
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field, model_validator
 
 from app.core.constants import ChatPreference, Gender, IdentityVerificationStatus, LuggageSize, SmokingPreference, UserRole
 
@@ -61,6 +61,13 @@ class UserUpdate(UserBase):
     marketing_emails: bool | None = None
 
 
+def _gcs_to_https(url: str | None) -> str | None:
+    """Convert gs://bucket/path → https://storage.googleapis.com/bucket/path."""
+    if url and url.startswith("gs://"):
+        return url.replace("gs://", "https://storage.googleapis.com/", 1)
+    return url
+
+
 class UserPublicResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
 
@@ -77,6 +84,12 @@ class UserPublicResponse(UserBase):
     @property
     def is_verified(self) -> bool:
         return self.is_email_verified and self.is_phone_verified and self.identity_verified
+
+    @model_validator(mode="after")
+    def _resolve_public_gcs_urls(self) -> "UserPublicResponse":
+        self.profile_photo_url = _gcs_to_https(self.profile_photo_url)
+        self.vehicle_photo_url = _gcs_to_https(self.vehicle_photo_url)
+        return self
 
 
 class UserPrivateResponse(UserPublicResponse):
@@ -99,6 +112,12 @@ class UserPrivateResponse(UserPublicResponse):
     created_at: datetime
     is_new_user: bool = False
     is_admin: bool = False
+
+    @model_validator(mode="after")
+    def _resolve_private_gcs_urls(self) -> "UserPrivateResponse":
+        for field in ("selfie_url", "id_document_url", "driver_license_url", "driver_license_back_url"):
+            setattr(self, field, _gcs_to_https(getattr(self, field, None)))
+        return self
 
 
 class OnboardingRequest(BaseModel):

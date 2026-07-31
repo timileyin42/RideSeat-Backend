@@ -26,16 +26,28 @@ class AdminService:
         self.booking_repo = booking_repo
         self.payment_repo = payment_repo
 
-    def get_metrics(self, db: Session, actor: User) -> dict:
+    def get_metrics(self, db: Session, actor: User, period: str = "all") -> dict:
         if not actor.is_admin:
             raise ValueError("Admin privileges required")
-        total_users = self.user_repo.count_users(db)
-        total_trips = self.trip_repo.count_trips(db)
-        confirmed_bookings = self.booking_repo.count_by_status(db, BookingStatus.CONFIRMED)
-        completed_bookings = self.booking_repo.count_by_status(db, BookingStatus.COMPLETED)
-        total_bookings = self.booking_repo.count_all(db)
-        total_revenue = self.payment_repo.sum_total_revenue(db)
-        platform_fee_total = self.payment_repo.sum_platform_fees(db)
+
+        # Compute since cutoff based on period
+        since = None
+        if period == "today":
+            from datetime import date, datetime, timezone
+            today = date.today()
+            since = datetime(today.year, today.month, today.day, tzinfo=timezone.utc)
+        elif period == "7d":
+            since = now_utc() - timedelta(days=7)
+        elif period == "30d":
+            since = now_utc() - timedelta(days=30)
+
+        total_users = self.user_repo.count_users(db, since=since)
+        total_trips = self.trip_repo.count_trips(db, since=since)
+        confirmed_bookings = self.booking_repo.count_by_status(db, BookingStatus.CONFIRMED, since=since)
+        completed_bookings = self.booking_repo.count_by_status(db, BookingStatus.COMPLETED, since=since)
+        total_bookings = self.booking_repo.count_all(db, since=since)
+        total_revenue = self.payment_repo.sum_total_revenue(db, since=since)
+        platform_fee_total = self.payment_repo.sum_platform_fees(db, since=since)
         trips_created_last_7_days = self.trip_repo.count_created_since(db, now_utc() - timedelta(days=7))
         booking_conversion_rate = confirmed_bookings / total_bookings if total_bookings else 0.0
         trip_completion_rate = completed_bookings / confirmed_bookings if confirmed_bookings else 0.0
@@ -50,4 +62,5 @@ class AdminService:
             "booking_conversion_rate": booking_conversion_rate,
             "trip_completion_rate": trip_completion_rate,
             "repeat_users": repeat_users,
+            "period": period,
         }

@@ -86,9 +86,10 @@ def list_pending_verifications(
 def get_metrics(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
+    period: str = Query(default="all", description="Date range: today | 7d | 30d | all"),
 ):
     try:
-        return DataResponse(data=admin_service.get_metrics(db, current_user))
+        return DataResponse(data=admin_service.get_metrics(db, current_user, period=period))
     except ValueError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 

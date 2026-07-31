@@ -24,3 +24,4 @@ class AdminMetricsResponse(BaseModel):
     booking_conversion_rate: float
     trip_completion_rate: float
     repeat_users: int
+    period: str = "all"

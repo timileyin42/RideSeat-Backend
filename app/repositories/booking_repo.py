@@ -31,12 +31,16 @@ class BookingRepository:
         stmt = select(Booking).offset(offset).limit(limit)
         return list(db.execute(stmt).scalars().all())
 
-    def count_by_status(self, db: Session, status: BookingStatus) -> int:
+    def count_by_status(self, db: Session, status: BookingStatus, since=None) -> int:
         stmt = select(func.count(Booking.id)).where(Booking.status == status)
+        if since is not None:
+            stmt = stmt.where(Booking.created_at >= since)
         return int(db.execute(stmt).scalar_one())
 
-    def count_all(self, db: Session) -> int:
+    def count_all(self, db: Session, since=None) -> int:
         stmt = select(func.count(Booking.id))
+        if since is not None:
+            stmt = stmt.where(Booking.created_at >= since)
         return int(db.execute(stmt).scalar_one())
 
     def count_repeat_users(self, db: Session) -> int:

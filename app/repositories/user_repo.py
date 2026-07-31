@@ -47,8 +47,10 @@ class UserRepository:
         stmt = stmt.offset(offset).limit(limit)
         return list(db.execute(stmt).scalars().all())
 
-    def count_users(self, db: Session) -> int:
+    def count_users(self, db: Session, since=None) -> int:
         stmt = select(func.count(User.id))
+        if since is not None:
+            stmt = stmt.where(User.created_at >= since)
         return int(db.execute(stmt).scalar_one())
 
     def list_pending_verifications(self, db: Session, limit: int = 50, offset: int = 0) -> list[User]:

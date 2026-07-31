@@ -70,12 +70,16 @@ class PaymentRepository:
         )
         return list(db.execute(stmt).scalars().all())
 
-    def sum_total_revenue(self, db: Session) -> float:
+    def sum_total_revenue(self, db: Session, since=None) -> float:
         stmt = select(func.coalesce(func.sum(Payment.amount), 0)).where(Payment.status == PaymentStatus.SUCCEEDED)
+        if since is not None:
+            stmt = stmt.where(Payment.created_at >= since)
         return float(db.execute(stmt).scalar_one())
 
-    def sum_platform_fees(self, db: Session) -> float:
+    def sum_platform_fees(self, db: Session, since=None) -> float:
         stmt = select(func.coalesce(func.sum(Payment.platform_fee), 0)).where(Payment.status == PaymentStatus.SUCCEEDED)
+        if since is not None:
+            stmt = stmt.where(Payment.created_at >= since)
         return float(db.execute(stmt).scalar_one())
 
     def list_payouts_by_driver(self, db: Session, driver_id: UUID) -> list[Payment]:
