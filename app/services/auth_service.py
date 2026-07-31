@@ -54,7 +54,10 @@ class AuthService:
         )
         saved = self.user_repo.create(db, user)
         otp_service.save_verify_otp(email, otp_code)
-        self.email_service.send_verification_email(saved.email, saved.first_name or "there", otp_code)
+        try:
+            self.email_service.send_verification_email(saved.email, saved.first_name or "there", otp_code)
+        except Exception:
+            pass  # Email delivery failure must not block registration
         access_token, refresh_token = self._issue_tokens(saved)
         return saved, access_token, refresh_token
 
