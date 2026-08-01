@@ -60,7 +60,8 @@ services:
   celery_worker:
     build: .
     restart: unless-stopped
-    command: celery -A app.core.celery_app:celery_app worker --loglevel=info -Q payments,celery
+    init: true
+    command: celery -A app.core.celery_app:celery_app worker --loglevel=info -Q payments,celery --without-gossip --without-mingle --without-heartbeat
     env_file: .env
     depends_on:
       postgres:
@@ -78,6 +79,7 @@ services:
   celery_beat:
     build: .
     restart: unless-stopped
+    init: true
     command: celery -A app.core.celery_app:celery_app beat --loglevel=info --pidfile=/tmp/celerybeat.pid
     env_file: .env
     depends_on:
