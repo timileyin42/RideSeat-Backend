@@ -3,6 +3,7 @@ from uuid import UUID
 
 from celery import Task
 
+import app.models  # noqa: F401 — registers all SQLAlchemy mappers before any query runs
 from app.core.celery_app import celery_app
 from app.repositories.booking_repo import BookingRepository
 from app.repositories.payment_repo import PaymentRepository
