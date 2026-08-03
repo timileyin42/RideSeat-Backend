@@ -125,11 +125,13 @@ class OnboardingRequest(BaseModel):
         "example": {
             "first_name": "James",
             "last_name": "Harrison",
+            "date_of_birth": "1995-04-20",
         }
     })
 
     first_name: str = Field(min_length=1, max_length=100)
-    last_name: str = Field(min_length=1, max_length=100)
+    last_name: str | None = Field(default=None, max_length=100)
+    date_of_birth: str | None = None
 
 
 class PhoneOTPRequest(BaseModel):
