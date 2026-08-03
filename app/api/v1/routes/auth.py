@@ -318,3 +318,32 @@ def change_password(
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/firebase-token", response_model=DataResponse[dict])
+def get_firebase_token(
+    current_user=Depends(get_current_user),
+    _=Depends(rate_limit("auth_firebase_token", limit=10, window_seconds=60)),
+):
+    """Mint a Firebase custom token for the logged-in user.
+
+    Web clients use this to authenticate with Firestore after logging in via
+    the standard JWT flow. Call once after login, then:
+      signInWithCustomToken(auth, firebaseToken)
+    """
+    from app.core.config import get_settings
+    from app.services.notification_service import _get_firebase_app
+
+    settings = get_settings()
+    if not settings.gcp_credentials_json:
+        raise HTTPException(status_code=503, detail="Firebase not configured")
+    try:
+        from firebase_admin import auth as fb_auth
+        app = _get_firebase_app(settings.gcp_credentials_json)
+        token = fb_auth.create_custom_token(str(current_user.id), app=app)
+        # create_custom_token returns bytes — decode to string for JSON
+        if isinstance(token, bytes):
+            token = token.decode("utf-8")
+        return DataResponse(data={"firebase_token": token})
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Could not mint Firebase token") from exc
