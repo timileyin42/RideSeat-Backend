@@ -104,6 +104,25 @@ def send_notification(
     return DataResponse(data={"message": "Notification sent"})
 
 
+@router.get("/unread-count", response_model=DataResponse[dict])
+def get_unread_count(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    count = notification_service.unread_count(db, current_user)
+    return DataResponse(data={"count": count})
+
+
+@router.post("/mark-all-read", response_model=DataResponse[dict])
+def mark_all_notifications_read(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    updated = notification_service.mark_all_read(db, current_user)
+    db.commit()
+    return DataResponse(data={"updated": updated})
+
+
 @router.post("/{notification_id}/read", response_model=DataResponse[NotificationResponse])
 def mark_notification_read(
     notification_id: UUID,

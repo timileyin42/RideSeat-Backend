@@ -105,6 +105,12 @@ class NotificationService:
     def list_notifications(self, db: Session, user: User, limit: int, offset: int) -> list[Notification]:
         return self.notification_repo.list_by_user(db, user.id, limit=limit, offset=offset)
 
+    def unread_count(self, db: Session, user: User) -> int:
+        return self.notification_repo.count_unread(db, user.id)
+
+    def mark_all_read(self, db: Session, user: User) -> int:
+        return self.notification_repo.mark_all_read(db, user.id)
+
     def mark_read(self, db: Session, user: User, notification_id: UUID) -> Notification:
         notification = self.notification_repo.get_by_id(db, notification_id)
         if not notification or notification.user_id != user.id:
