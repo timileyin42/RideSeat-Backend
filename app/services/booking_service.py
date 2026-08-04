@@ -325,6 +325,28 @@ class BookingService:
         for booking in expired:
             booking.status = BookingStatus.CANCELLED
             self.booking_repo.update(db, booking)
+            trip = self.trip_repo.get_by_id(db, booking.trip_id)
+            origin = trip.origin_city if trip else "origin"
+            destination = trip.destination_city if trip else "destination"
+            # Notify passenger their seat was released
+            self.notification_service.create_notification(
+                db,
+                booking.passenger_id,
+                NotificationType.BOOKING_CANCELLED,
+                "Booking cancelled — payment not received",
+                f"Your seat from {origin} to {destination} was released because payment wasn't completed in time.",
+                data={"booking_id": str(booking.id), "trip_id": str(booking.trip_id)},
+            )
+            # Notify driver the request is off
+            if trip:
+                self.notification_service.create_notification(
+                    db,
+                    trip.driver_id,
+                    NotificationType.BOOKING_CANCELLED,
+                    "Booking request expired",
+                    f"A passenger didn't complete payment for their seat from {origin} to {destination}. The request has been removed.",
+                    data={"booking_id": str(booking.id), "trip_id": str(booking.trip_id)},
+                )
             count += 1
         return count
 
