@@ -238,6 +238,24 @@ class BookingService:
                 raise ValueError("Only driver can reject booking")
             if booking.status != BookingStatus.PENDING:
                 raise ValueError("Can only reject pending bookings")
+
+        # Driver approving a review-required booking → hold for payment first.
+        # Instant bookings go straight to PENDING_PAYMENT at creation time; this
+        # intercepts the manual approval path so payment always precedes CONFIRMED.
+        if status == BookingStatus.CONFIRMED and booking.status == BookingStatus.PENDING:
+            booking.status = BookingStatus.PENDING_PAYMENT
+            self.booking_repo.update(db, booking)
+            passenger = self.user_repo.get_by_id(db, booking.passenger_id)
+            self.notification_service.create_notification(
+                db,
+                booking.passenger_id,
+                NotificationType.BOOKING_REQUEST,
+                "Your booking was approved — complete payment",
+                f"Your seat from {trip.origin_city} to {trip.destination_city} has been approved. Complete payment to confirm your spot.",
+                data={"booking_id": str(booking.id), "trip_id": str(trip.id)},
+            )
+            return booking
+
         booking.status = status
         updated = self.booking_repo.update(db, booking)
         if status == BookingStatus.COMPLETED:
