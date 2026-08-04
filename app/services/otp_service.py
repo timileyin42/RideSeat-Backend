@@ -96,3 +96,26 @@ def get_phone_otp(phone: str) -> str | None:
 
 def delete_phone_otp(phone: str) -> None:
     _client().delete(_KEY_PHONE_OTP.format(phone))
+
+
+# ── email change ───────────────────────────────────────────────────────────────
+# Stored as "{new_email}:{otp}" keyed by user_id so we know which address
+# the code was sent to when the user comes back to verify.
+
+_KEY_EMAIL_CHANGE = "rideway:otp:email_change:{}"
+
+
+def save_email_change_otp(user_id: str, new_email: str, otp: str) -> None:
+    _client().setex(_KEY_EMAIL_CHANGE.format(user_id), _TTL, f"{new_email.lower()}:{otp}")
+
+
+def get_email_change_otp(user_id: str) -> tuple[str, str] | None:
+    raw = _client().get(_KEY_EMAIL_CHANGE.format(user_id))
+    if not raw:
+        return None
+    new_email, otp = raw.rsplit(":", 1)
+    return new_email, otp
+
+
+def delete_email_change_otp(user_id: str) -> None:
+    _client().delete(_KEY_EMAIL_CHANGE.format(user_id))

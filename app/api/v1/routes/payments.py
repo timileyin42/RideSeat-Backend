@@ -105,7 +105,7 @@ def connect_onboard(
 @router.post("/connect/document", response_model=DataResponse[ConnectDocumentResponse])
 async def upload_document(
     file: UploadFile = File(...),
-    purpose: str = Query(pattern="^(identity_document_front|identity_document_back)$"),
+    purpose: str = Query(pattern="^(identity_document_front|identity_document_back|address_document)$"),
     current_user=Depends(get_current_user),
     _=Depends(rate_limit("connect_document", limit=5, window_seconds=60)),
 ):
@@ -144,6 +144,20 @@ def attach_document(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.post("/connect/attach-address-document", response_model=DataResponse[dict])
+def attach_address_document(
+    file_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Attach an uploaded proof-of-address file to the driver's Stripe account."""
+    try:
+        payment_service.attach_address_document(db, current_user.id, file_id)
+        return DataResponse(data={"message": "Address document attached successfully"})
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.get("/connect/payout-history", response_model=DataResponse[list[PaymentResponse]])
 def driver_payout_history(
     db: Session = Depends(get_db),
@@ -158,11 +172,12 @@ def driver_payout_history(
 def request_payout(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
+    amount: float | None = Query(default=None, gt=0, description="Specific payout amount in GBP. Omit to pay out full available balance."),
     _=Depends(rate_limit("request_payout", limit=5, window_seconds=60)),
 ):
-    """Driver manually requests payout for all completed, unpaid earnings."""
+    """Driver manually requests payout. Pass amount= for a partial payout, omit for full balance."""
     try:
-        result = payment_service.request_payout(db, current_user.id)
+        result = payment_service.request_payout(db, current_user.id, amount=amount)
         db.commit()
         return DataResponse(data=result)
     except ValueError as exc:

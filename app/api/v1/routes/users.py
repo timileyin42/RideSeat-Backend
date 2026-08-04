@@ -1,6 +1,7 @@
 """User routes."""
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 from uuid import UUID
 
@@ -30,6 +31,14 @@ router = APIRouter()
 user_service = UserService(UserRepository(), BookingRepository())
 email_service = EmailService()
 vision_service = VisionService()
+
+
+class _EmailChangeRequest(BaseModel):
+    new_email: EmailStr
+
+
+class _EmailChangeVerifyRequest(BaseModel):
+    code: str
 
 
 @router.get("/me", response_model=DataResponse[UserPrivateResponse])
@@ -133,6 +142,38 @@ def verify_phone(
         if result["user"] is not None:
             return DataResponse(data={"verified": True, "phone_number": result["phone_number"], "user": result["user"]})
         return DataResponse(data={"verified": True, "phone_number": result["phone_number"]})
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/me/email/request", response_model=DataResponse[dict])
+def request_email_change(
+    payload: _EmailChangeRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Send a 6-digit OTP to the new email address to confirm ownership."""
+    try:
+        user_service.request_email_change(db, current_user, str(payload.new_email), email_service)
+        db.commit()
+        return DataResponse(data={"message": "Verification code sent to your new email address"})
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/me/email/verify", response_model=DataResponse[UserPrivateResponse])
+def verify_email_change(
+    payload: _EmailChangeVerifyRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Confirm the OTP and update the user's email address."""
+    try:
+        user_service.confirm_email_change(db, current_user, payload.code)
+        db.commit()
+        return DataResponse(data=UserPrivateResponse.model_validate(current_user))
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc

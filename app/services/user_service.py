@@ -162,6 +162,35 @@ class UserService:
             otp_service.reset_phone_channel(phone_number)
             return {"user": None, "phone_number": phone_number}
 
+    def request_email_change(self, db: Session, user, new_email: str, email_service=None) -> None:
+        from app.services import otp_service
+        new_email = new_email.strip().lower()
+        if new_email == (user.email or "").lower():
+            raise ValueError("New email is the same as your current email")
+        if self.user_repo.get_by_email(db, new_email):
+            raise ValueError("That email address is already in use")
+        token = f"{secrets.randbelow(1000000):06d}"
+        otp_service.save_email_change_otp(str(user.id), new_email, token)
+        logger.info("[DEV] Email change OTP for %s → %s: %s", user.email, new_email, token)
+        if email_service:
+            try:
+                email_service.send_email_change_otp(new_email, user.first_name or "there", token)
+            except Exception:
+                pass
+
+    def confirm_email_change(self, db: Session, user, code: str) -> None:
+        from app.services import otp_service
+        result = otp_service.get_email_change_otp(str(user.id))
+        if not result:
+            raise ValueError("No email change request found — please request a new code")
+        new_email, stored_otp = result
+        if stored_otp != code:
+            raise ValueError("Invalid verification code")
+        otp_service.delete_email_change_otp(str(user.id))
+        user.email = new_email
+        user.is_email_verified = True
+        self.user_repo.update(db, user)
+
     def get_phone_for_driver(self, db: Session, actor: User, passenger_id: UUID) -> str:
         allowed = self.booking_repo.has_confirmed_booking_between(db, actor.id, passenger_id)
         if not allowed:

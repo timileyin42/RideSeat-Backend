@@ -473,14 +473,56 @@ class PaymentService:
             payment_circuit_breaker.record_failure()
             raise ValueError(f"Stripe error: {exc.user_message or str(exc)}") from exc
 
-    def request_payout(self, db: Session, driver_id: UUID) -> dict:
-        """Driver manually requests payout for all completed, unpaid earnings."""
+    def attach_address_document(self, db: Session, driver_id: UUID, file_id: str) -> None:
+        """Attach a proof-of-address file to the driver's Stripe account additional_document."""
+        self._configured_stripe()
+        driver = self.user_repo.get_by_id(db, driver_id)
+        if not driver or not driver.payment_details:
+            raise ValueError("Driver has no connected account")
+        try:
+            stripe.Account.modify(
+                driver.payment_details,
+                individual={"verification": {"additional_document": {"front": file_id}}},
+            )
+            payment_circuit_breaker.record_success()
+        except stripe.StripeError as exc:
+            payment_circuit_breaker.record_failure()
+            raise ValueError(f"Stripe error: {exc.user_message or str(exc)}") from exc
+
+    def request_payout(self, db: Session, driver_id: UUID, amount: float | None = None) -> dict:
+        """Driver manually requests payout.
+
+        If amount is given, creates a direct Stripe Payout from the connected
+        account to their bank for that specific amount (must not exceed available
+        balance). If amount is None, transfers all unpaid bookings as before.
+        """
         self._configured_stripe()
         driver = self.user_repo.get_by_id(db, driver_id)
         if not driver:
             raise ValueError("User not found")
         if not driver.payment_details:
             raise ValueError("You must set up your payout account before requesting a payout")
+
+        if amount is not None:
+            # Partial / specific-amount payout — Stripe Payout from connected account to bank
+            amount_pence = int(round(amount * 100))
+            try:
+                payout = stripe.Payout.create(
+                    amount=amount_pence,
+                    currency=CURRENCY,
+                    stripe_account=driver.payment_details,
+                    idempotency_key=f"manual_payout:{driver_id}:{amount_pence}",
+                )
+                payment_circuit_breaker.record_success()
+            except stripe.StripeError as exc:
+                payment_circuit_breaker.record_failure()
+                raise ValueError(f"Payout failed: {exc.user_message or str(exc)}") from exc
+            return {
+                "transfers_initiated": 1,
+                "total_amount": amount,
+                "message": f"Payout of £{amount:.2f} initiated",
+                "stripe_payout_id": payout.id,
+            }
 
         pending = self.payment_repo.list_unpaid_by_driver(db, driver_id)
         if not pending:

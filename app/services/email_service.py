@@ -64,6 +64,18 @@ class EmailService:
         )
         self._send(email, "Trip completed", html)
 
+    def send_email_change_otp(self, email: str, first_name: str, token: str) -> None:
+        padded = token.ljust(6)
+        html = self._render_template(
+            "verify_email.html",
+            {
+                "first_name": first_name,
+                "d0": padded[0], "d1": padded[1], "d2": padded[2],
+                "d3": padded[3], "d4": padded[4], "d5": padded[5],
+            },
+        )
+        self._send(email, "Confirm your new Rideway email address", html)
+
     def send_password_reset_email(self, email: str, token: str) -> None:
         padded = token.ljust(6)
         html = self._render_template(
