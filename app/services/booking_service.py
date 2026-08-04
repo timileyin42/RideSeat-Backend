@@ -315,7 +315,18 @@ class BookingService:
                 db, driver.id, NotificationType.BOOKING_REQUEST,
                 "New booking",
                 f"{passenger.first_name if passenger else 'A passenger'} has paid and booked a seat from {origin} to {destination}.",
+                data={"booking_id": str(booking.id), "trip_id": str(booking.trip_id)},
             )
+            # Check if trip is now fully booked and notify driver
+            if trip:
+                confirmed_seats = self.trip_repo.count_confirmed_seats(db, trip.id)
+                if confirmed_seats >= trip.available_seats:
+                    self.notification_service.create_notification(
+                        db, driver.id, NotificationType.BOOKING_REQUEST,
+                        "Your trip is fully booked!",
+                        f"All seats on your {origin} to {destination} trip are now taken.",
+                        data={"trip_id": str(trip.id)},
+                    )
         return updated
 
     def cancel_expired_pending_payments(self, db: Session) -> int:
