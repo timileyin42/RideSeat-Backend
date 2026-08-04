@@ -1,5 +1,6 @@
 """Booking service."""
 
+from datetime import timedelta
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -141,12 +142,14 @@ class BookingService:
         total_amount = float(trip.price_per_seat) * seats
         instant = getattr(trip, "instant_booking", False)
         status = BookingStatus.PENDING_PAYMENT if instant else BookingStatus.PENDING
+        payment_deadline = now_utc() + timedelta(minutes=30) if instant else None
         booking = Booking(
             trip_id=trip.id,
             passenger_id=passenger.id,
             seats=seats,
             status=status,
             total_amount=total_amount,
+            payment_deadline=payment_deadline,
         )
         created = self.booking_repo.create(db, booking)
         driver = self.user_repo.get_by_id(db, trip.driver_id)
@@ -240,18 +243,20 @@ class BookingService:
                 raise ValueError("Can only reject pending bookings")
 
         # Driver approving a review-required booking → hold for payment first.
-        # Instant bookings go straight to PENDING_PAYMENT at creation time; this
-        # intercepts the manual approval path so payment always precedes CONFIRMED.
+        # Deadline: 2 hours if departure is >48 hours away, else 30 minutes.
         if status == BookingStatus.CONFIRMED and booking.status == BookingStatus.PENDING:
+            hours_to_departure = (ensure_utc(trip.departure_time) - now_utc()).total_seconds() / 3600
+            payment_window = timedelta(hours=2) if hours_to_departure > 48 else timedelta(minutes=30)
             booking.status = BookingStatus.PENDING_PAYMENT
+            booking.payment_deadline = now_utc() + payment_window
             self.booking_repo.update(db, booking)
-            passenger = self.user_repo.get_by_id(db, booking.passenger_id)
+            window_str = "2 hours" if hours_to_departure > 48 else "30 minutes"
             self.notification_service.create_notification(
                 db,
                 booking.passenger_id,
                 NotificationType.BOOKING_REQUEST,
                 "Your booking was approved — complete payment",
-                f"Your seat from {trip.origin_city} to {trip.destination_city} has been approved. Complete payment to confirm your spot.",
+                f"Your seat from {trip.origin_city} to {trip.destination_city} has been approved. Complete payment within {window_str} to confirm your spot.",
                 data={"booking_id": str(booking.id), "trip_id": str(trip.id)},
             )
             return booking
@@ -314,11 +319,8 @@ class BookingService:
         return updated
 
     def cancel_expired_pending_payments(self, db: Session) -> int:
-        """Cancel PENDING_PAYMENT bookings older than 30 minutes. Returns count cancelled."""
-        from app.utils.datetime import now_utc
-        from datetime import timedelta
-        cutoff = now_utc() - timedelta(minutes=10)
-        expired = self.booking_repo.list_by_status_before(db, BookingStatus.PENDING_PAYMENT, cutoff)
+        """Cancel PENDING_PAYMENT bookings whose payment_deadline has passed."""
+        expired = self.booking_repo.list_expired_pending_payments(db, now_utc())
         count = 0
         for booking in expired:
             booking.status = BookingStatus.CANCELLED

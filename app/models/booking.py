@@ -21,6 +21,7 @@ class Booking(Base):
     total_amount: Mapped[float] = mapped_column(Numeric(10, 2))
     is_disputed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="false")
     dispute_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    payment_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 

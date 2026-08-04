@@ -97,10 +97,18 @@ class BookingRepository:
         return db.execute(stmt).scalar_one_or_none()
 
     def list_by_status_before(self, db: Session, status: BookingStatus, before) -> list[Booking]:
-        from datetime import datetime
         stmt = select(Booking).where(
             Booking.status == status,
             Booking.created_at < before,
+        )
+        return list(db.execute(stmt).scalars().all())
+
+    def list_expired_pending_payments(self, db: Session, now) -> list[Booking]:
+        """Return PENDING_PAYMENT bookings whose payment_deadline has passed."""
+        stmt = select(Booking).where(
+            Booking.status == BookingStatus.PENDING_PAYMENT,
+            Booking.payment_deadline != None,  # noqa: E711
+            Booking.payment_deadline < now,
         )
         return list(db.execute(stmt).scalars().all())
 
