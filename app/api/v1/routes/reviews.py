@@ -50,6 +50,17 @@ def create_review(
         raise HTTPException(status_code=500, detail="Review processing error") from exc
 
 
+@router.get("/trip/{trip_id}/mine", response_model=DataResponse[ReviewResponse | None])
+def get_my_review_for_trip(
+    trip_id: UUID,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Return the current user's review for a trip, or null if they haven't reviewed yet."""
+    review = review_service.review_repo.get_by_trip_and_reviewer(db, trip_id, current_user.id)
+    return DataResponse(data=review)
+
+
 @router.get("/user/{user_id}", response_model=DataResponse[list[ReviewResponse]])
 def list_reviews(user_id: UUID, db: Session = Depends(get_db)):
     return DataResponse(data=review_service.list_reviews(db, user_id))
