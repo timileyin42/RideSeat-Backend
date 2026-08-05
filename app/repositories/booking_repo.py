@@ -103,6 +103,20 @@ class BookingRepository:
         )
         return list(db.execute(stmt).scalars().all())
 
+    def list_departing_soon(self, db: Session, window_start, window_end) -> list[Booking]:
+        """Return CONFIRMED bookings whose trip departs within the given time window.
+        Used for departure reminder notifications."""
+        stmt = (
+            select(Booking)
+            .join(Trip, Trip.id == Booking.trip_id)
+            .where(
+                Booking.status == BookingStatus.CONFIRMED,
+                Trip.departure_time >= window_start,
+                Trip.departure_time < window_end,
+            )
+        )
+        return list(db.execute(stmt).scalars().all())
+
     def list_expired_pending_payments(self, db: Session, now) -> list[Booking]:
         """Return PENDING_PAYMENT bookings whose payment_deadline has passed."""
         stmt = select(Booking).where(

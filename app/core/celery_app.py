@@ -32,4 +32,8 @@ celery_app.conf.beat_schedule = {
         "task": "app.tasks.payment_tasks.cancel_expired_pending_payments",
         "schedule": 120.0,  # every 2 minutes
     },
+    "send-departure-reminders": {
+        "task": "app.tasks.payment_tasks.send_departure_reminders",
+        "schedule": 300.0,  # every 5 minutes — 10-min window catches it regardless
+    },
 }

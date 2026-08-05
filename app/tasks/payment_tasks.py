@@ -144,6 +144,64 @@ def process_stripe_webhook(task: Task, event: dict) -> None:
         db.close()
 
 
+@celery_app.task(name="app.tasks.payment_tasks.send_departure_reminders")
+def send_departure_reminders() -> None:
+    """Notify passengers 1 hour before their trip departs. Redis dedup prevents double-sends."""
+    from datetime import datetime, timedelta, timezone
+    from app.core.database import create_db_session
+    from app.repositories.booking_repo import BookingRepository
+    from app.repositories.trip_repo import TripRepository
+    from app.repositories.device_repo import DeviceRepository
+    from app.repositories.notification_repo import NotificationRepository
+    from app.core.constants import NotificationType
+    from app.services.notification_service import NotificationService
+    import redis as redis_lib
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    base_url = settings.celery_broker_url.rsplit("/", 1)[0]
+    r = redis_lib.from_url(f"{base_url}/2", decode_responses=True)
+
+    now = datetime.now(timezone.utc)
+    window_start = now + timedelta(minutes=55)
+    window_end = now + timedelta(minutes=65)
+
+    db = create_db_session()
+    try:
+        booking_repo = BookingRepository()
+        trip_repo = TripRepository()
+        notification_service = NotificationService(
+            DeviceRepository(), NotificationRepository(), UserRepository()
+        )
+        bookings = booking_repo.list_departing_soon(db, window_start, window_end)
+        sent = 0
+        for booking in bookings:
+            dedup_key = f"rideway:departure_reminder:{booking.id}"
+            if r.exists(dedup_key):
+                continue
+            trip = trip_repo.get_by_id(db, booking.trip_id)
+            if not trip:
+                continue
+            notification_service.create_notification(
+                db,
+                booking.passenger_id,
+                NotificationType.GENERAL,
+                "Your ride departs in 1 hour",
+                f"Your trip from {trip.origin_city} to {trip.destination_city} leaves in about 1 hour. Get ready!",
+                data={"trip_id": str(trip.id), "booking_id": str(booking.id)},
+            )
+            r.setex(dedup_key, 7200, "1")  # TTL 2 hours — well past the departure
+            sent += 1
+        db.commit()
+        if sent:
+            logger.info("Sent %d departure reminder(s)", sent)
+    except Exception as exc:
+        db.rollback()
+        logger.error("Error sending departure reminders: %s", exc)
+    finally:
+        db.close()
+
+
 def enqueue_payment_intent(payment_id: UUID) -> None:
     process_payment_intent.delay(str(payment_id))
 
