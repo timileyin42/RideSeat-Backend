@@ -1,6 +1,6 @@
 """Trip repository."""
 
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timezone
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.models.booking import Booking
 from app.models.trip import Trip
-from app.core.constants import BookingStatus
+from app.core.constants import BookingStatus, TripStatus
 
 
 class TripRepository:
@@ -56,7 +56,16 @@ class TripRepository:
         limit: int = 50,
         offset: int = 0,
     ) -> list[Trip]:
-        stmt = select(Trip).options(selectinload(Trip.driver)).where(Trip.is_cancelled.is_(False))
+        now = datetime.now(timezone.utc)
+        stmt = (
+            select(Trip)
+            .options(selectinload(Trip.driver))
+            .where(
+                Trip.is_cancelled.is_(False),
+                Trip.departure_time > now,
+                Trip.trip_status == TripStatus.ACTIVE,
+            )
+        )
         confirmed_seats = (
             select(func.coalesce(func.sum(Booking.seats), 0))
             .where(
