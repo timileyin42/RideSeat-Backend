@@ -7,8 +7,31 @@ from datetime import datetime
 from functools import lru_cache
 
 from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel
 
 from app.schemas.base import DataResponse
+
+
+class VehicleMake(BaseModel):
+    id: str
+    name: str
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {"id": "volkswagen", "name": "Volkswagen"}
+        }
+    }
+
+
+class VehicleModel(BaseModel):
+    id: str
+    name: str
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {"id": "golf", "name": "Golf"}
+        }
+    }
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -52,7 +75,26 @@ def _fetch_models(kind: str) -> list[dict]:
         return []
 
 
-@router.get("/makes", response_model=DataResponse[list[dict]])
+@router.get(
+    "/makes",
+    response_model=DataResponse[list[VehicleMake]],
+    responses={
+        200: {
+            "content": {
+                "application/json": {
+                    "example": {
+                        "data": [
+                            {"id": "audi", "name": "Audi"},
+                            {"id": "bmw", "name": "BMW"},
+                            {"id": "ford", "name": "Ford"},
+                            {"id": "volkswagen", "name": "Volkswagen"},
+                        ]
+                    }
+                }
+            }
+        }
+    },
+)
 def list_makes(
     type: str = Query(default="car", description="Vehicle type: car | van | motorcycle | moped | truck | bus"),
 ):
@@ -62,13 +104,32 @@ def list_makes(
         raise HTTPException(status_code=400, detail=f"Invalid type. Must be one of: {', '.join(sorted(_VALID_TYPES))}")
     raw = _fetch_makes(kind)
     makes = sorted(
-        [{"id": m["id"], "name": m["name"]} for m in raw],
-        key=lambda x: x["name"].lower(),
+        [VehicleMake(id=m["id"], name=m["name"]) for m in raw],
+        key=lambda x: x.name.lower(),
     )
     return DataResponse(data=makes)
 
 
-@router.get("/models", response_model=DataResponse[list[dict]])
+@router.get(
+    "/models",
+    response_model=DataResponse[list[VehicleModel]],
+    responses={
+        200: {
+            "content": {
+                "application/json": {
+                    "example": {
+                        "data": [
+                            {"id": "golf", "name": "Golf"},
+                            {"id": "passat", "name": "Passat"},
+                            {"id": "polo", "name": "Polo"},
+                            {"id": "tiguan", "name": "Tiguan"},
+                        ]
+                    }
+                }
+            }
+        }
+    },
+)
 def list_models(
     make: str = Query(..., description="Make ID (slug), e.g. volkswagen"),
     type: str = Query(default="car", description="Vehicle type: car | van | motorcycle"),
@@ -79,13 +140,25 @@ def list_models(
         raise HTTPException(status_code=400, detail=f"Invalid type. Must be one of: {', '.join(sorted(_VALID_TYPES))}")
     raw = _fetch_models(kind)
     models = sorted(
-        [{"id": m["id"], "name": m["name"]} for m in raw if m.get("make_id") == make.lower()],
-        key=lambda x: x["name"].lower(),
+        [VehicleModel(id=m["id"], name=m["name"]) for m in raw if m.get("make_id") == make.lower()],
+        key=lambda x: x.name.lower(),
     )
     return DataResponse(data=models)
 
 
-@router.get("/years", response_model=DataResponse[list[int]])
+@router.get(
+    "/years",
+    response_model=DataResponse[list[int]],
+    responses={
+        200: {
+            "content": {
+                "application/json": {
+                    "example": {"data": [2026, 2025, 2024, 2023, 2022, 2021, 2020]}
+                }
+            }
+        }
+    },
+)
 def list_years():
     """Return vehicle years from current year down to 1990."""
     current = datetime.utcnow().year
