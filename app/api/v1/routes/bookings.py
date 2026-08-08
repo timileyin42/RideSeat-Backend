@@ -10,6 +10,7 @@ from app.repositories.booking_repo import BookingRepository
 from app.repositories.device_repo import DeviceRepository
 from app.repositories.notification_repo import NotificationRepository
 from app.repositories.payment_repo import PaymentRepository
+from app.repositories.review_repo import ReviewRepository
 from app.repositories.trip_repo import TripRepository
 from app.repositories.user_repo import UserRepository
 from app.schemas.base import DataResponse
@@ -20,6 +21,7 @@ from app.services.notification_service import NotificationService
 from app.services.payment_service import PaymentService
 
 router = APIRouter()
+review_repo = ReviewRepository()
 payment_service = PaymentService(PaymentRepository(), BookingRepository(), TripRepository(), UserRepository())
 notification_service = NotificationService(DeviceRepository(), NotificationRepository(), UserRepository())
 booking_service = BookingService(
@@ -48,12 +50,26 @@ def create_booking(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+def _attach_has_reviewed(db: Session, bookings: list, reviewer_id) -> list[BookingResponse]:
+    """Stamp has_reviewed on each booking — one batch DB query regardless of list size."""
+    trip_ids = {b.trip_id for b in bookings}
+    reviewed = review_repo.get_reviewed_trip_ids(db, reviewer_id, trip_ids)
+    result = []
+    for b in bookings:
+        resp = BookingResponse.model_validate(b)
+        if b.trip_id in reviewed:
+            resp = resp.model_copy(update={"has_reviewed": True})
+        result.append(resp)
+    return result
+
+
 @router.get("/me", response_model=DataResponse[list[BookingResponse]])
 def list_my_bookings(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    return DataResponse(data=booking_service.list_bookings(db, current_user))
+    bookings = booking_service.list_bookings(db, current_user)
+    return DataResponse(data=_attach_has_reviewed(db, bookings, current_user.id))
 
 
 @router.get("/driver", response_model=DataResponse[list[BookingResponse]])
@@ -63,7 +79,8 @@ def list_driver_bookings(
     current_user=Depends(get_current_user),
 ):
     try:
-        return DataResponse(data=booking_service.list_bookings_for_driver(db, current_user, status=status))
+        bookings = booking_service.list_bookings_for_driver(db, current_user, status=status)
+        return DataResponse(data=_attach_has_reviewed(db, bookings, current_user.id))
     except ValueError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 

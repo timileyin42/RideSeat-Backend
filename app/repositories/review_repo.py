@@ -17,6 +17,16 @@ class ReviewRepository:
         stmt = select(Review).where(Review.trip_id == trip_id, Review.reviewer_id == reviewer_id)
         return db.execute(stmt).scalars().first()
 
+    def get_reviewed_trip_ids(self, db: Session, reviewer_id: UUID, trip_ids: set[UUID]) -> set[UUID]:
+        """Return which trip_ids the reviewer has already reviewed — single batch query."""
+        if not trip_ids:
+            return set()
+        stmt = select(Review.trip_id).where(
+            Review.reviewer_id == reviewer_id,
+            Review.trip_id.in_(trip_ids),
+        )
+        return set(db.execute(stmt).scalars().all())
+
     def create(self, db: Session, review: Review) -> Review:
         db.add(review)
         db.flush()

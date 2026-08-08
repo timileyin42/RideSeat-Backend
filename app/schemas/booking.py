@@ -107,5 +107,6 @@ class BookingResponse(BaseModel):
     payment_deadline: datetime | None = None
     is_disputed: bool = False
     dispute_reason: str | None = None
+    has_reviewed: bool = False
     trip: TripSummary | None = None
     passenger: PassengerSummary | None = None
