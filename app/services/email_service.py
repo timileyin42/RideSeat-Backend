@@ -149,3 +149,14 @@ class EmailService:
             },
         )
         self._send(email, "New booking request", html)
+
+    def send_contact_message(self, name: str, email: str, message: str) -> None:
+        import html as html_lib
+        safe_name = html_lib.escape(name)
+        safe_email = html_lib.escape(email)
+        safe_message = html_lib.escape(message).replace("\n", "<br>")
+        body = (
+            f"<p><strong>From:</strong> {safe_name} ({safe_email})</p>"
+            f"<p>{safe_message}</p>"
+        )
+        self._send("hello@rideway.co.uk", f"New contact form message from {safe_name}", body)

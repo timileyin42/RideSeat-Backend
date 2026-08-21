@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from app.api.v1.routes import admin, auth, bookings, devices, messages, notifications, payments, reviews, tickets, trips, users, vehicle_lookup, vehicles
+from app.api.v1.routes import admin, auth, bookings, contact, devices, messages, notifications, payments, reviews, tickets, trips, users, vehicle_lookup, vehicles
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
@@ -18,3 +18,4 @@ api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
 api_router.include_router(devices.router, prefix="/devices", tags=["devices"])
 api_router.include_router(tickets.router, prefix="/tickets", tags=["tickets"])
+api_router.include_router(contact.router, prefix="/contact", tags=["contact"])
