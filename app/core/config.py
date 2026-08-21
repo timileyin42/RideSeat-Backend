@@ -44,6 +44,7 @@ class Settings:
     field_encryption_key: str
     google_web_redirect_uri: str | None
     cors_origins: list[str]
+    dvla_ves_api_key: str
 
 
 @lru_cache
@@ -85,6 +86,7 @@ def get_settings() -> Settings:
         termii_base_url=os.getenv("TERMII_BASE_URL", "https://api.ng.termii.com"),
         field_encryption_key=os.getenv("FIELD_ENCRYPTION_KEY", ""),
         google_web_redirect_uri=os.getenv("GOOGLE_WEB_REDIRECT_URI"),
+        dvla_ves_api_key=os.getenv("DVLA_VES_API_KEY", ""),
         cors_origins=[
             o.strip()
             for o in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")

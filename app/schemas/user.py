@@ -109,6 +109,8 @@ class UserPrivateResponse(UserPublicResponse):
     driver_license_back_url: str | None = None
     driver_license_number: str | None = None
     identity_verification_status: IdentityVerificationStatus | None = None
+    vehicle_plate_verified: bool = False
+    vehicle_plate_verified_at: datetime | None = None
     created_at: datetime
     is_new_user: bool = False
     is_admin: bool = False

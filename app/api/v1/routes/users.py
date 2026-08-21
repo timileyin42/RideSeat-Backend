@@ -291,6 +291,53 @@ def get_user_phone(
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
+class _PlateVerifyRequest(BaseModel):
+    registration_number: str
+
+
+@router.post("/me/vehicle/verify-plate")
+def verify_vehicle_plate(
+    payload: _PlateVerifyRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Verify a UK number plate against the DVLA Vehicle Enquiry Service.
+
+    Stores the result on the user record. Returns make/colour/MOT/tax status
+    and any mismatch warnings against what the driver already saved.
+    """
+    from app.core.config import get_settings
+    from app.services.dvla_service import verify_plate
+    from app.utils.datetime import now_utc
+
+    settings = get_settings()
+    if not settings.dvla_ves_api_key:
+        raise HTTPException(status_code=503, detail="Vehicle verification is not configured")
+
+    result = verify_plate(
+        payload.registration_number,
+        settings.dvla_ves_api_key,
+        saved_make=current_user.vehicle_make,
+        saved_colour=current_user.vehicle_color,
+    )
+
+    if result["verified"]:
+        reg = payload.registration_number.replace(" ", "").upper()
+        current_user.vehicle_plate = reg
+        current_user.vehicle_plate_verified = True
+        current_user.vehicle_plate_verified_at = now_utc()
+        user_repo = UserRepository()
+        user_repo.update(db, current_user)
+        db.commit()
+        return DataResponse(data=result)
+
+    # Not verified — return the error with appropriate HTTP status
+    error_msg = result.get("error", "")
+    if "unavailable" in error_msg:
+        raise HTTPException(status_code=502, detail=error_msg)
+    raise HTTPException(status_code=422, detail=error_msg)
+
+
 @router.delete("/me", status_code=204)
 def delete_my_account(
     db: Session = Depends(get_db),

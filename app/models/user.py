@@ -45,6 +45,8 @@ class User(Base):
     vehicle_color: Mapped[str | None] = mapped_column(String(50), default=None)
     vehicle_year: Mapped[int | None] = mapped_column(Integer, default=None)
     vehicle_plate: Mapped[str | None] = mapped_column(String(50), default=None)
+    vehicle_plate_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    vehicle_plate_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
     luggage_size: Mapped[LuggageSize | None] = mapped_column(Enum(LuggageSize), default=None)
     back_seat_max: Mapped[int | None] = mapped_column(Integer, default=None)
     has_winter_tires: Mapped[bool] = mapped_column(Boolean, default=False)
