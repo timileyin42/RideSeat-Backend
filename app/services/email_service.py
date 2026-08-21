@@ -155,8 +155,16 @@ class EmailService:
         safe_name = html_lib.escape(name)
         safe_email = html_lib.escape(email)
         safe_message = html_lib.escape(message).replace("\n", "<br>")
-        body = (
-            f"<p><strong>From:</strong> {safe_name} ({safe_email})</p>"
-            f"<p>{safe_message}</p>"
+        ctx = {"name": safe_name, "email": safe_email, "message": safe_message}
+        # Acknowledgement to the person who submitted the form
+        self._send(
+            email,
+            "We've received your message — Rideway",
+            self._render_template("contact_acknowledgement.html", ctx),
         )
-        self._send("hello@rideway.co.uk", f"New contact form message from {safe_name}", body)
+        # Internal notification to the team
+        self._send(
+            "hello@rideway.co.uk",
+            f"New contact form message from {safe_name}",
+            self._render_template("contact_internal.html", ctx),
+        )
