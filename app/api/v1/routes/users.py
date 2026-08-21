@@ -295,47 +295,32 @@ class _PlateVerifyRequest(BaseModel):
     registration_number: str
 
 
-@router.post("/me/vehicle/verify-plate")
+@router.post("/me/vehicle/verify-plate", response_model=DataResponse[dict])
 def verify_vehicle_plate(
     payload: _PlateVerifyRequest,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    """Verify a UK number plate against the DVLA Vehicle Enquiry Service.
+    """Validate a UK number plate format and store it on the driver's profile.
 
-    Stores the result on the user record. Returns make/colour/MOT/tax status
-    and any mismatch warnings against what the driver already saved.
+    Confirms the plate matches a recognised UK format (modern, prefix, suffix,
+    Northern Ireland). Ownership is confirmed separately via document upload.
     """
-    from app.core.config import get_settings
-    from app.services.dvla_service import verify_plate
+    from app.services.plate_service import validate_plate
     from app.utils.datetime import now_utc
 
-    settings = get_settings()
-    if not settings.dvla_ves_api_key:
-        raise HTTPException(status_code=503, detail="Vehicle verification is not configured")
+    result = validate_plate(payload.registration_number)
 
-    result = verify_plate(
-        payload.registration_number,
-        settings.dvla_ves_api_key,
-        saved_make=current_user.vehicle_make,
-        saved_colour=current_user.vehicle_color,
-    )
+    if not result["verified"]:
+        raise HTTPException(status_code=422, detail=result["error"])
 
-    if result["verified"]:
-        reg = payload.registration_number.replace(" ", "").upper()
-        current_user.vehicle_plate = reg
-        current_user.vehicle_plate_verified = True
-        current_user.vehicle_plate_verified_at = now_utc()
-        user_repo = UserRepository()
-        user_repo.update(db, current_user)
-        db.commit()
-        return DataResponse(data=result)
-
-    # Not verified — return the error with appropriate HTTP status
-    error_msg = result.get("error", "")
-    if "unavailable" in error_msg:
-        raise HTTPException(status_code=502, detail=error_msg)
-    raise HTTPException(status_code=422, detail=error_msg)
+    current_user.vehicle_plate = result["registration_number"]
+    current_user.vehicle_plate_verified = True
+    current_user.vehicle_plate_verified_at = now_utc()
+    user_repo = UserRepository()
+    user_repo.update(db, current_user)
+    db.commit()
+    return DataResponse(data=result)
 
 
 @router.delete("/me", status_code=204)
