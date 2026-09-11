@@ -150,6 +150,14 @@ class EmailService:
         )
         self._send(email, "New booking request", html)
 
+    def send_stripe_account_rejected(self, email: str, first_name: str, reason: str) -> None:
+        import html as html_lib
+        html = self._render_template(
+            "stripe_account_rejected.html",
+            {"first_name": html_lib.escape(first_name), "reason": html_lib.escape(reason)},
+        )
+        self._send(email, "Important: Your Rideway payout account has been rejected", html)
+
     def send_contact_message(self, name: str, email: str, message: str) -> None:
         import html as html_lib
         safe_name = html_lib.escape(name)

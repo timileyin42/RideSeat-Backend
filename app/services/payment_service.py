@@ -297,6 +297,10 @@ class PaymentService:
         event_type = event["type"]
         data_object = event["data"]["object"]
 
+        if event_type == "account.updated":
+            self._handle_account_updated(db, data_object)
+            return None
+
         if event_type not in (
             "payment_intent.succeeded",
             "payment_intent.processing",
@@ -328,6 +332,81 @@ class PaymentService:
             payment.status = PaymentStatus.FAILED
 
         return self.payment_repo.update(db, payment)
+
+    def _handle_account_updated(self, db: Session, account: dict) -> None:
+        """Handle account.updated — notify driver if their connected account was rejected.
+
+        UK regulations require platforms to communicate the rejection reason without delay,
+        including the driver's right to appeal (FCA / Stripe UK compliance).
+        """
+        disabled_reason = (account.get("requirements") or {}).get("disabled_reason", "")
+        if not disabled_reason.startswith("rejected."):
+            return  # Not a rejection — nothing to do
+
+        stripe_account_id = account.get("id")
+        if not stripe_account_id:
+            return
+
+        driver = self.user_repo.get_by_stripe_account_id(db, stripe_account_id)
+        if not driver:
+            logger.warning("account.updated rejection: no user found for %s", stripe_account_id)
+            return
+
+        _REASON_MAP = {
+            "rejected.fraud": (
+                "Your account has been rejected due to suspected fraudulent or illegal activity."
+            ),
+            "rejected.terms_of_service": (
+                "Your account has been rejected due to a terms of service violation."
+            ),
+            "rejected.listed": (
+                "Your account has been rejected because your details appear on a prohibited "
+                "persons or companies list."
+            ),
+            "rejected.incomplete_verification": (
+                "Your account has been rejected because identity verification could not be "
+                "completed within the required timeframe."
+            ),
+            "rejected.other": (
+                "Your account has been rejected. Please contact our support team for further "
+                "information."
+            ),
+        }
+        reason = _REASON_MAP.get(
+            disabled_reason,
+            "Your account has been rejected. Please contact our support team.",
+        )
+
+        from app.repositories.device_repo import DeviceRepository
+        from app.repositories.notification_repo import NotificationRepository
+        from app.core.constants import NotificationType
+        from app.services.notification_service import NotificationService
+        from app.services.email_service import EmailService
+
+        notification_service = NotificationService(
+            DeviceRepository(), NotificationRepository(), self.user_repo
+        )
+        notification_service.create_notification(
+            db,
+            driver.id,
+            NotificationType.GENERAL,
+            "Your payout account has been rejected",
+            reason,
+            data={"stripe_account_id": stripe_account_id, "disabled_reason": disabled_reason},
+        )
+        try:
+            EmailService().send_stripe_account_rejected(
+                driver.email,
+                driver.first_name or "Driver",
+                reason,
+            )
+        except Exception as exc:
+            logger.error("Failed to send rejection email to %s: %s", driver.email, exc)
+
+        logger.info(
+            "Notified driver of Stripe account rejection",
+            extra={"user_id": str(driver.id), "reason": disabled_reason},
+        )
 
     def handle_webhook(self, db: Session, payload: bytes, sig_header: str) -> Payment | None:
         """Legacy synchronous handler — kept for backwards compatibility. Prefer the queued path."""

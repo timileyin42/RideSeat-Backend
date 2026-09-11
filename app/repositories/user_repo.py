@@ -16,6 +16,10 @@ class UserRepository:
         stmt = select(User).where(User.email == email)
         return db.execute(stmt).scalar_one_or_none()
 
+    def get_by_stripe_account_id(self, db: Session, stripe_account_id: str) -> User | None:
+        stmt = select(User).where(User.payment_details == stripe_account_id)
+        return db.execute(stmt).scalar_one_or_none()
+
     def create(self, db: Session, user: User) -> User:
         db.add(user)
         db.flush()
