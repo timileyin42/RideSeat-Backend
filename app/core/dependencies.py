@@ -38,6 +38,8 @@ def get_current_user(
         user = user_repo.get_by_id(db, user_id)
         if not user:
             raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+        if not user.is_active:
+            raise HTTPException(status_code=403, detail="Account is deactivated")
         return user
     except ValueError as exc:
         raise HTTPException(status_code=401, detail="Invalid authentication credentials") from exc

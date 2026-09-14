@@ -202,6 +202,36 @@ def send_departure_reminders() -> None:
         db.close()
 
 
+@celery_app.task(name="app.tasks.payment_tasks.purge_deleted_accounts")
+def purge_deleted_accounts() -> None:
+    """Permanently delete user accounts whose 30-day grace period has expired."""
+    from app.core.database import create_db_session
+    from app.utils.datetime import now_utc
+
+    db = create_db_session()
+    try:
+        from sqlalchemy import select
+        from app.models.user import User
+        import app.models  # noqa: F401
+
+        stmt = select(User).where(
+            User.is_active.is_(False),
+            User.scheduled_deletion_at.isnot(None),
+            User.scheduled_deletion_at <= now_utc(),
+        )
+        users = list(db.execute(stmt).scalars().all())
+        for user in users:
+            db.delete(user)
+        db.commit()
+        if users:
+            logger.info("Permanently deleted %d expired user account(s)", len(users))
+    except Exception as exc:
+        db.rollback()
+        logger.error("Error purging deleted accounts: %s", exc)
+    finally:
+        db.close()
+
+
 def enqueue_payment_intent(payment_id: UUID) -> None:
     process_payment_intent.delay(str(payment_id))
 

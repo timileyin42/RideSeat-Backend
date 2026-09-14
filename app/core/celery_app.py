@@ -36,4 +36,8 @@ celery_app.conf.beat_schedule = {
         "task": "app.tasks.payment_tasks.send_departure_reminders",
         "schedule": 300.0,  # every 5 minutes — 10-min window catches it regardless
     },
+    "purge-deleted-accounts": {
+        "task": "app.tasks.payment_tasks.purge_deleted_accounts",
+        "schedule": 86400.0,  # once a day
+    },
 }

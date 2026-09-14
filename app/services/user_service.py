@@ -366,4 +366,8 @@ class UserService:
             raise ValueError("Age must be 18 or older")
 
     def delete_account(self, db: Session, user: User) -> None:
-        self.user_repo.delete(db, user)
+        from datetime import timedelta
+        from app.utils.datetime import now_utc
+        user.is_active = False
+        user.scheduled_deletion_at = now_utc() + timedelta(days=30)
+        self.user_repo.update(db, user)
