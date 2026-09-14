@@ -67,14 +67,8 @@ class AuthService:
             raise ValueError("Invalid credentials")
         if not user.is_email_verified:
             raise ValueError("Email not verified")
-        # Reactivate if within 30-day deletion window
-        if not user.is_active and user.scheduled_deletion_at:
-            user.is_active = True
-            user.scheduled_deletion_at = None
-            self.user_repo.update(db, user)
-            db.commit()
-        elif not user.is_active:
-            raise ValueError("Account is deactivated")
+        if not user.is_active:
+            raise ValueError("Your account has been deactivated. Please contact support at hello@rideway.co.uk")
         access_token, refresh_token = self._issue_tokens(user)
         return user, access_token, refresh_token
 
