@@ -13,6 +13,7 @@ from app.schemas.auth import (
     GoogleAuthRequest,
     GoogleMobileAuthRequest,
     LoginRequest,
+    ReactivateAccountRequest,
     RefreshTokenRequest,
     RegisterRequest,
     ResendOTPRequest,
@@ -301,6 +302,23 @@ def google_web_callback(
     except Exception as exc:
         db.rollback()
         raise HTTPException(status_code=502, detail="Google token exchange failed") from exc
+
+
+@router.post("/reactivate", response_model=DataResponse[AuthTokenResponse])
+def reactivate_account(
+    payload: ReactivateAccountRequest,
+    db: Session = Depends(get_db),
+    _=Depends(rate_limit("auth_reactivate", limit=5, window_seconds=60)),
+):
+    """Reactivate a previously deleted account within the 30-day grace period."""
+    try:
+        user, access_token, refresh_token = auth_service.reactivate_account(db, payload.email, payload.password)
+        db.commit()
+        user_response = UserPrivateResponse.model_validate(user).model_copy(update={"is_new_user": False})
+        return DataResponse(data=AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user_response))
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/change-password", response_model=DataResponse[dict])

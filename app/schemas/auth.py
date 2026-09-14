@@ -138,3 +138,15 @@ class RefreshTokenRequest(BaseModel):
     })
 
     refresh_token: str
+
+
+class ReactivateAccountRequest(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "email": "james.harrison@example.com",
+            "password": "SecurePass1!",
+        }
+    })
+
+    email: EmailStr
+    password: str = Field(min_length=1, max_length=128)

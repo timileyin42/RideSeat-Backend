@@ -116,6 +116,20 @@ class AuthService:
         otp_service.delete_reset_otp(email)
         return updated
 
+    def reactivate_account(self, db: Session, email: str, password: str) -> tuple[User, str, str]:
+        user = self.user_repo.get_by_email(db, email)
+        if not user or not verify_password(password, user.password_hash):
+            raise ValueError("Invalid credentials")
+        if not user.is_email_verified:
+            raise ValueError("Email not verified")
+        if user.is_active:
+            raise ValueError("Account is already active")
+        user.is_active = True
+        user.scheduled_deletion_at = None
+        updated = self.user_repo.update(db, user)
+        access_token, refresh_token = self._issue_tokens(updated)
+        return updated, access_token, refresh_token
+
     def change_password(self, db: Session, user: User, current_password: str, new_password: str) -> None:
         if not user.password_hash or not verify_password(current_password, user.password_hash):
             raise ValueError("Current password is incorrect")
