@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.dependencies import get_current_user, get_db, rate_limit
 from app.core.security import create_access_token, create_refresh_token, decode_refresh_token
 from app.schemas.auth import (
+    AppleMobileAuthRequest,
     AuthTokenResponse,
     ChangePasswordRequest,
     ForgotPasswordRequest,
@@ -106,6 +107,28 @@ async def login(
 def google_auth(payload: GoogleAuthRequest, db: Session = Depends(get_db)):
     try:
         user, access_token, refresh_token, is_new_user = auth_service.google_auth(db, payload.id_token)
+        db.commit()
+        user_response = UserPrivateResponse.model_validate(user).model_copy(update={"is_new_user": is_new_user})
+        return DataResponse(data=AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user_response))
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/apple/mobile", response_model=DataResponse[AuthTokenResponse])
+def apple_mobile_auth(
+    payload: AppleMobileAuthRequest,
+    db: Session = Depends(get_db),
+    _=Depends(rate_limit("auth_apple_mobile", limit=10, window_seconds=60)),
+):
+    try:
+        user, access_token, refresh_token, is_new_user = auth_service.apple_auth(
+            db,
+            identity_token=payload.identity_token,
+            authorization_code=payload.authorization_code,
+            first_name=payload.first_name,
+            last_name=payload.last_name,
+        )
         db.commit()
         user_response = UserPrivateResponse.model_validate(user).model_copy(update={"is_new_user": is_new_user})
         return DataResponse(data=AuthTokenResponse(access_token=access_token, refresh_token=refresh_token, user=user_response))

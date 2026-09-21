@@ -116,6 +116,94 @@ class AuthService:
         otp_service.delete_reset_otp(email)
         return updated
 
+    def apple_auth(
+        self,
+        db: Session,
+        identity_token: str,
+        authorization_code: str,
+        first_name: str | None = None,
+        last_name: str | None = None,
+    ) -> tuple[User, str, str, bool]:
+        token_info = self._verify_apple_identity_token(identity_token)
+
+        apple_user_id = token_info.get("sub")
+        if not apple_user_id:
+            raise ValueError("Apple token missing user ID")
+
+        email = token_info.get("email")
+        is_new_user = False
+
+        # Look up by apple_user_id first (stable across email changes / relay switches)
+        user = self.user_repo.get_by_apple_user_id(db, apple_user_id)
+        if not user and email:
+            user = self.user_repo.get_by_email(db, email)
+
+        if not user:
+            is_new_user = True
+            # Apple only sends name on the very first sign-in — use what we got or fall back
+            user = User(
+                first_name=first_name or "Apple",
+                last_name=last_name or "User",
+                email=email or f"{apple_user_id}@privaterelay.appleid.com",
+                password_hash=hash_password(str(uuid4())),
+                is_email_verified=True,
+                apple_user_id=apple_user_id,
+            )
+            user = self.user_repo.create(db, user)
+        else:
+            # Stamp apple_user_id if this is first Apple sign-in on an existing email account
+            if not user.apple_user_id:
+                user.apple_user_id = apple_user_id
+                user = self.user_repo.update(db, user)
+
+        if not user.is_active:
+            raise ValueError("Your account has been deactivated. Please contact support at hello@rideway.co.uk")
+
+        access_token, refresh_token = self._issue_tokens(user)
+        return user, access_token, refresh_token, is_new_user
+
+    def _verify_apple_identity_token(self, token: str) -> dict:
+        import json
+        import urllib.request as _req
+        from jose import jwt as jose_jwt, JWTError
+        import base64
+
+        settings = get_settings()
+
+        # Decode header without verifying to get kid + alg
+        header_segment = token.split(".")[0]
+        # Pad base64 if needed
+        padding = 4 - len(header_segment) % 4
+        header_bytes = base64.urlsafe_b64decode(header_segment + "=" * (padding % 4))
+        header = json.loads(header_bytes)
+        kid = header.get("kid")
+        alg = header.get("alg", "RS256")
+
+        # Fetch Apple's public keys
+        try:
+            with _req.urlopen("https://appleid.apple.com/auth/keys", timeout=10) as resp:
+                jwks = json.loads(resp.read())
+        except Exception as exc:
+            raise ValueError("Could not fetch Apple public keys") from exc
+
+        # Find the matching key
+        key = next((k for k in jwks.get("keys", []) if k.get("kid") == kid), None)
+        if not key:
+            raise ValueError("Apple public key not found for kid")
+
+        try:
+            claims = jose_jwt.decode(
+                token,
+                key,
+                algorithms=[alg],
+                audience=settings.apple_bundle_id,
+                issuer="https://appleid.apple.com",
+            )
+        except JWTError as exc:
+            raise ValueError("Invalid Apple identity token") from exc
+
+        return claims
+
     def reactivate_account(self, db: Session, email: str, password: str) -> tuple[User, str, str]:
         user = self.user_repo.get_by_email(db, email)
         if not user or not verify_password(password, user.password_hash):

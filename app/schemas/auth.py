@@ -140,6 +140,22 @@ class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
 
+class AppleMobileAuthRequest(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "identity_token": "eyJraWQiOiJBSUR...",
+            "authorization_code": "c1a2b3d4e5...",
+            "first_name": "Israel",
+            "last_name": "Glory",
+        }
+    })
+
+    identity_token: str
+    authorization_code: str
+    first_name: str | None = None
+    last_name: str | None = None
+
+
 class ReactivateAccountRequest(BaseModel):
     model_config = ConfigDict(json_schema_extra={
         "example": {

@@ -20,6 +20,10 @@ class UserRepository:
         stmt = select(User).where(User.payment_details == stripe_account_id)
         return db.execute(stmt).scalar_one_or_none()
 
+    def get_by_apple_user_id(self, db: Session, apple_user_id: str) -> User | None:
+        stmt = select(User).where(User.apple_user_id == apple_user_id)
+        return db.execute(stmt).scalar_one_or_none()
+
     def create(self, db: Session, user: User) -> User:
         db.add(user)
         db.flush()
