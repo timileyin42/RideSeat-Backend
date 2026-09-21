@@ -121,10 +121,18 @@ class AuthService:
         db: Session,
         identity_token: str,
         authorization_code: str,
+        raw_nonce: str = "",
         first_name: str | None = None,
         last_name: str | None = None,
     ) -> tuple[User, str, str, bool]:
         token_info = self._verify_apple_identity_token(identity_token)
+
+        # Verify nonce: sha256(raw_nonce) must match the nonce claim Apple embedded in the token
+        import hashlib
+        expected_nonce = hashlib.sha256(raw_nonce.encode()).hexdigest()
+        token_nonce = token_info.get("nonce")
+        if not token_nonce or token_nonce != expected_nonce:
+            raise ValueError("Nonce verification failed")
 
         apple_user_id = token_info.get("sub")
         if not apple_user_id:

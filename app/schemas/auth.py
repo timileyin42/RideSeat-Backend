@@ -145,6 +145,7 @@ class AppleMobileAuthRequest(BaseModel):
         "example": {
             "identity_token": "eyJraWQiOiJBSUR...",
             "authorization_code": "c1a2b3d4e5...",
+            "raw_nonce": "a8f3c2...",
             "first_name": "Israel",
             "last_name": "Glory",
         }
@@ -152,6 +153,7 @@ class AppleMobileAuthRequest(BaseModel):
 
     identity_token: str
     authorization_code: str
+    raw_nonce: str
     first_name: str | None = None
     last_name: str | None = None
 

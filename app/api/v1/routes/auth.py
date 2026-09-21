@@ -126,6 +126,7 @@ def apple_mobile_auth(
             db,
             identity_token=payload.identity_token,
             authorization_code=payload.authorization_code,
+            raw_nonce=payload.raw_nonce,
             first_name=payload.first_name,
             last_name=payload.last_name,
         )

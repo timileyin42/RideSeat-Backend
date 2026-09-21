@@ -36,10 +36,13 @@ def mock_bcrypt():
 
 # ── Fake Apple token claims (what _verify_apple_identity_token returns) ───────
 
+RAW_NONCE = "test-raw-nonce-abc123"
+
 def _apple_claims(
     sub: str = "apple.uid.001",
     email: str = "user@privaterelay.appleid.com",
 ) -> dict:
+    import hashlib
     return {
         "sub": sub,
         "email": email,
@@ -47,6 +50,7 @@ def _apple_claims(
         "is_private_email": "true",
         "iss": "https://appleid.apple.com",
         "aud": "com.rideway.app",
+        "nonce": hashlib.sha256(RAW_NONCE.encode()).hexdigest(),
     }
 
 
@@ -90,6 +94,7 @@ class TestAppleAuthNewUser:
                 db_session,
                 identity_token="fake.token",
                 authorization_code="fake.code",
+                raw_nonce=RAW_NONCE,
                 first_name="Israel",
                 last_name="Glory",
             )
@@ -112,6 +117,7 @@ class TestAppleAuthNewUser:
                 db_session,
                 identity_token="fake.token",
                 authorization_code="fake.code",
+                raw_nonce=RAW_NONCE,
                 first_name=None,
                 last_name=None,
             )
@@ -127,13 +133,13 @@ class TestAppleAuthNewUser:
 
         with patch.object(service, "_verify_apple_identity_token", return_value=claims):
             user1, _, _, is_new1 = service.apple_auth(
-                db_session, "t", "c", first_name="First", last_name="Last"
+                db_session, "t", "c", raw_nonce=RAW_NONCE, first_name="First", last_name="Last"
             )
         db_session.commit()
 
         with patch.object(service, "_verify_apple_identity_token", return_value=claims):
             user2, _, _, is_new2 = service.apple_auth(
-                db_session, "t", "c", first_name=None, last_name=None
+                db_session, "t", "c", raw_nonce=RAW_NONCE, first_name=None, last_name=None
             )
         db_session.commit()
 
@@ -151,7 +157,7 @@ class TestAppleAuthExistingEmailUser:
         claims = _apple_claims(sub="apple.link.001", email="linked@example.com")
         with patch.object(service, "_verify_apple_identity_token", return_value=claims):
             user, _, _, is_new = service.apple_auth(
-                db_session, "t", "c", first_name=None, last_name=None
+                db_session, "t", "c", raw_nonce=RAW_NONCE, first_name=None, last_name=None
             )
         db_session.commit()
 
@@ -168,7 +174,7 @@ class TestAppleAuthExistingEmailUser:
         claims = _apple_claims(sub="apple.gone.001", email="gone@example.com")
         with patch.object(service, "_verify_apple_identity_token", return_value=claims):
             with pytest.raises(ValueError, match="deactivated"):
-                service.apple_auth(db_session, "t", "c")
+                service.apple_auth(db_session, "t", "c", raw_nonce=RAW_NONCE)
 
 
 class TestAppleAuthTokenVerification:
@@ -183,7 +189,18 @@ class TestAppleAuthTokenVerification:
 
     def test_token_missing_sub_raises(self, service, db_session):
         """Claims without 'sub' are rejected."""
-        claims = {"email": "x@example.com"}  # no sub
+        import hashlib
+        claims = {
+            "email": "x@example.com",
+            "nonce": hashlib.sha256(RAW_NONCE.encode()).hexdigest(),
+        }  # no sub
         with patch.object(service, "_verify_apple_identity_token", return_value=claims):
             with pytest.raises(ValueError, match="missing user ID"):
-                service.apple_auth(db_session, "t", "c")
+                service.apple_auth(db_session, "t", "c", raw_nonce=RAW_NONCE)
+
+    def test_nonce_mismatch_raises(self, service, db_session):
+        """Wrong raw_nonce is rejected even with a valid token."""
+        claims = _apple_claims(sub="apple.nonce.001")
+        with patch.object(service, "_verify_apple_identity_token", return_value=claims):
+            with pytest.raises(ValueError, match="Nonce"):
+                service.apple_auth(db_session, "t", "c", raw_nonce="wrong-nonce")
