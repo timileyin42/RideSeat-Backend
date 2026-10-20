@@ -4,10 +4,11 @@ Two jobs:
 1. Exchange the one-time ``authorization_code`` from sign-in for a refresh
    token, which is what we store (the authorization code itself expires within
    minutes and cannot be revoked directly).
-2. Revoke that refresh token on demand, as described in App Store Review
-   Guideline 5.1.1(v) and Apple TN3194.
+2. Revoke that refresh token when the account is deleted, as described in App
+   Store Review Guideline 5.1.1(v) and Apple TN3194.
 
-All calls are best-effort: sign-in must not fail because Apple is unreachable.
+All calls are best-effort: neither sign-in nor account deletion may fail
+because Apple is unreachable.
 """
 
 import json

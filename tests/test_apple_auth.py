@@ -206,11 +206,11 @@ class TestAppleAuthTokenVerification:
                 service.apple_auth(db_session, "t", "c", raw_nonce="wrong-nonce")
 
 
-# ── Refresh token storage and Apple server helpers ──────────────────────────
+# ── Refresh token storage + revocation on account deletion ───────────────────
 
 class TestAppleRefreshTokenStorage:
     def test_sign_in_stores_refresh_token_from_authorization_code(self, service, db_session):
-        """The exchange result is persisted on the user for later revocation."""
+        """The exchange result is persisted so DELETE /me can revoke it later."""
         claims = _apple_claims(sub="apple.rt.001")
         with patch.object(service, "_verify_apple_identity_token", return_value=claims), \
              patch("app.services.auth_service.apple_service.exchange_authorization_code",
@@ -237,6 +237,78 @@ class TestAppleRefreshTokenStorage:
         assert is_new is True
         assert access_token
         assert user.apple_refresh_token is None
+
+
+class TestDeleteAccountRevokesAppleToken:
+    def _make_apple_user(self, db_session, refresh_token="apple-refresh-token-abc"):
+        from app.models.user import User
+        user = User(
+            first_name="Apple",
+            last_name="User",
+            email="apple.delete@privaterelay.appleid.com",
+            password_hash="unused",
+            is_email_verified=True,
+            apple_user_id="apple.delete.001",
+            apple_refresh_token=refresh_token,
+        )
+        db_session.add(user)
+        db_session.commit()
+        return user
+
+    def test_revokes_token_and_clears_it(self, db_session):
+        from app.repositories.booking_repo import BookingRepository
+        from app.repositories.user_repo import UserRepository
+        from app.services.user_service import UserService
+
+        user = self._make_apple_user(db_session)
+        service = UserService(UserRepository(), BookingRepository())
+
+        with patch("app.services.apple_service.revoke_token", return_value=True) as revoke:
+            service.delete_account(db_session, user)
+        db_session.commit()
+
+        revoke.assert_called_once_with("apple-refresh-token-abc")
+        assert user.apple_refresh_token is None
+        assert user.is_active is False
+        assert user.scheduled_deletion_at is not None
+
+    def test_deletion_succeeds_when_revocation_fails(self, db_session):
+        """An unreachable Apple (revoke returns False) must not block deletion."""
+        from app.repositories.booking_repo import BookingRepository
+        from app.repositories.user_repo import UserRepository
+        from app.services.user_service import UserService
+
+        user = self._make_apple_user(db_session)
+        service = UserService(UserRepository(), BookingRepository())
+
+        with patch("app.services.apple_service.revoke_token", return_value=False):
+            service.delete_account(db_session, user)
+        db_session.commit()
+
+        assert user.is_active is False
+        assert user.scheduled_deletion_at is not None
+
+    def test_non_apple_user_does_not_call_apple(self, db_session):
+        from app.models.user import User
+        from app.repositories.booking_repo import BookingRepository
+        from app.repositories.user_repo import UserRepository
+        from app.services.user_service import UserService
+
+        user = User(
+            first_name="Email",
+            last_name="User",
+            email="email.delete@example.com",
+            password_hash="unused",
+            is_email_verified=True,
+        )
+        db_session.add(user)
+        db_session.commit()
+
+        service = UserService(UserRepository(), BookingRepository())
+        with patch("app.services.apple_service.revoke_token") as revoke:
+            service.delete_account(db_session, user)
+
+        revoke.assert_not_called()
 
 
 class TestAppleService:

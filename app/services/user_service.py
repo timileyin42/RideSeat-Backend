@@ -368,6 +368,14 @@ class UserService:
     def delete_account(self, db: Session, user: User) -> None:
         from datetime import timedelta
         from app.utils.datetime import now_utc
+        from app.services import apple_service
+
+        # Revoke Apple access for Sign in with Apple users (App Store 5.1.1(v)).
+        # Best-effort — Apple being unreachable must not block deletion.
+        if user.apple_refresh_token:
+            apple_service.revoke_token(user.apple_refresh_token)
+            user.apple_refresh_token = None
+
         user.is_active = False
         user.scheduled_deletion_at = now_utc() + timedelta(days=30)
         self.user_repo.update(db, user)

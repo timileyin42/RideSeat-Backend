@@ -167,8 +167,8 @@ class AuthService:
         if not user.is_active:
             raise ValueError("Your account has been deactivated. Please contact support at hello@rideway.co.uk")
 
-        # Store the refresh token (the authorization code itself is single-use
-        # and short-lived) so Apple access can be revoked later if needed.
+        # Keep the refresh token so DELETE /me can revoke Apple access (TN3194).
+        # The authorization code itself is single-use and short-lived.
         if authorization_code:
             apple_refresh_token = apple_service.exchange_authorization_code(authorization_code)
             if apple_refresh_token:
