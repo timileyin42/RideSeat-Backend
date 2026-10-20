@@ -204,3 +204,120 @@ class TestAppleAuthTokenVerification:
         with patch.object(service, "_verify_apple_identity_token", return_value=claims):
             with pytest.raises(ValueError, match="Nonce"):
                 service.apple_auth(db_session, "t", "c", raw_nonce="wrong-nonce")
+
+
+# ── Refresh token storage and Apple server helpers ──────────────────────────
+
+class TestAppleRefreshTokenStorage:
+    def test_sign_in_stores_refresh_token_from_authorization_code(self, service, db_session):
+        """The exchange result is persisted on the user for later revocation."""
+        claims = _apple_claims(sub="apple.rt.001")
+        with patch.object(service, "_verify_apple_identity_token", return_value=claims), \
+             patch("app.services.auth_service.apple_service.exchange_authorization_code",
+                   return_value="apple-refresh-token-xyz") as exchange:
+            user, _, _, _ = service.apple_auth(
+                db_session, "t", "auth-code-1", raw_nonce=RAW_NONCE, first_name="A", last_name="B"
+            )
+        db_session.commit()
+
+        exchange.assert_called_once_with("auth-code-1")
+        assert user.apple_refresh_token == "apple-refresh-token-xyz"
+
+    def test_sign_in_survives_failed_exchange(self, service, db_session):
+        """A failed exchange must not break sign-in — the account is still created."""
+        claims = _apple_claims(sub="apple.rt.002")
+        with patch.object(service, "_verify_apple_identity_token", return_value=claims), \
+             patch("app.services.auth_service.apple_service.exchange_authorization_code",
+                   return_value=None):
+            user, access_token, _, is_new = service.apple_auth(
+                db_session, "t", "auth-code-2", raw_nonce=RAW_NONCE
+            )
+        db_session.commit()
+
+        assert is_new is True
+        assert access_token
+        assert user.apple_refresh_token is None
+
+
+class TestAppleService:
+    def _settings(self, **overrides):
+        from types import SimpleNamespace
+        base = {
+            "apple_team_id": "TEAM123456",
+            "apple_key_id": "KEY1234567",
+            "apple_private_key": self._pem_key(),
+            "apple_bundle_id": "com.rideway.app",
+        }
+        base.update(overrides)
+        return SimpleNamespace(**base)
+
+    @staticmethod
+    def _pem_key() -> str:
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import ec
+        key = ec.generate_private_key(ec.SECP256R1())
+        return key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption(),
+        ).decode()
+
+    def test_is_configured_requires_key_material(self):
+        from app.services import apple_service
+        with patch("app.services.apple_service.get_settings", return_value=self._settings()):
+            assert apple_service.is_configured() is True
+        with patch("app.services.apple_service.get_settings",
+                   return_value=self._settings(apple_team_id="")):
+            assert apple_service.is_configured() is False
+
+    def test_client_secret_is_valid_es256_jwt(self):
+        from jose import jwt as jose_jwt
+        from app.services import apple_service
+
+        with patch("app.services.apple_service.get_settings", return_value=self._settings()):
+            secret = apple_service._client_secret()
+
+        claims = jose_jwt.get_unverified_claims(secret)
+        assert claims["iss"] == "TEAM123456"
+        assert claims["aud"] == "https://appleid.apple.com"
+        assert claims["sub"] == "com.rideway.app"
+        assert claims["exp"] > claims["iat"]
+
+        header = jose_jwt.get_unverified_header(secret)
+        assert header["alg"] == "ES256"
+        assert header["kid"] == "KEY1234567"
+
+    def test_revoke_posts_refresh_token_hint(self):
+        from app.services import apple_service
+        with patch("app.services.apple_service.get_settings", return_value=self._settings()), \
+             patch("app.services.apple_service._client_secret", return_value="secret"), \
+             patch("app.services.apple_service._post", return_value={}) as post:
+            assert apple_service.revoke_token("refresh-tok") is True
+
+        url, payload = post.call_args[0]
+        assert url == "https://appleid.apple.com/auth/revoke"
+        assert payload["token"] == "refresh-tok"
+        assert payload["token_type_hint"] == "refresh_token"
+        assert payload["client_id"] == "com.rideway.app"
+
+    def test_revoke_noop_without_credentials(self):
+        from app.services import apple_service
+        with patch("app.services.apple_service.get_settings",
+                   return_value=self._settings(apple_private_key="")), \
+             patch("app.services.apple_service._post") as post:
+            assert apple_service.revoke_token("refresh-tok") is False
+
+        post.assert_not_called()
+
+    def test_exchange_returns_refresh_token(self):
+        from app.services import apple_service
+        with patch("app.services.apple_service.get_settings", return_value=self._settings()), \
+             patch("app.services.apple_service._client_secret", return_value="secret"), \
+             patch("app.services.apple_service._post",
+                   return_value={"refresh_token": "rt-123", "access_token": "at-123"}) as post:
+            assert apple_service.exchange_authorization_code("code-abc") == "rt-123"
+
+        url, payload = post.call_args[0]
+        assert url == "https://appleid.apple.com/auth/token"
+        assert payload["grant_type"] == "authorization_code"
+        assert payload["code"] == "code-abc"

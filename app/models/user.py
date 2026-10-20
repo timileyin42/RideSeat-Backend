@@ -67,6 +67,7 @@ class User(Base):
         Enum(IdentityVerificationStatus), default=None
     )
     apple_user_id: Mapped[str | None] = mapped_column(String(255), unique=True, index=True, default=None)
+    apple_refresh_token: Mapped[str | None] = mapped_column(EncryptedString(), default=None)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     scheduled_deletion_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)

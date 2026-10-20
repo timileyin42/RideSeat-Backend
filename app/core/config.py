@@ -44,6 +44,9 @@ class Settings:
     field_encryption_key: str
     google_web_redirect_uri: str | None
     apple_bundle_id: str
+    apple_team_id: str
+    apple_key_id: str
+    apple_private_key: str
     cors_origins: list[str]
 
 
@@ -87,6 +90,9 @@ def get_settings() -> Settings:
         field_encryption_key=os.getenv("FIELD_ENCRYPTION_KEY", ""),
         google_web_redirect_uri=os.getenv("GOOGLE_WEB_REDIRECT_URI"),
         apple_bundle_id=os.getenv("APPLE_BUNDLE_ID", "com.rideway.app"),
+        apple_team_id=os.getenv("APPLE_TEAM_ID", ""),
+        apple_key_id=os.getenv("APPLE_KEY_ID", ""),
+        apple_private_key=os.getenv("APPLE_PRIVATE_KEY", ""),
         cors_origins=[
             o.strip()
             for o in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")

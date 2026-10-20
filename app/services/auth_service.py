@@ -12,8 +12,8 @@ from app.core.config import get_settings
 from app.core.security import create_access_token, create_refresh_token, hash_password, verify_password
 from app.models.user import User
 from app.repositories.user_repo import UserRepository
+from app.services import apple_service, otp_service
 from app.services.email_service import EmailService
-from app.services import otp_service
 
 
 class AuthService:
@@ -166,6 +166,14 @@ class AuthService:
 
         if not user.is_active:
             raise ValueError("Your account has been deactivated. Please contact support at hello@rideway.co.uk")
+
+        # Store the refresh token (the authorization code itself is single-use
+        # and short-lived) so Apple access can be revoked later if needed.
+        if authorization_code:
+            apple_refresh_token = apple_service.exchange_authorization_code(authorization_code)
+            if apple_refresh_token:
+                user.apple_refresh_token = apple_refresh_token
+                user = self.user_repo.update(db, user)
 
         access_token, refresh_token = self._issue_tokens(user)
         return user, access_token, refresh_token, is_new_user
