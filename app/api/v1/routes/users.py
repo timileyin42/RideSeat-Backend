@@ -122,9 +122,12 @@ def request_phone_verification(
     current_user=Depends(get_optional_user),
 ):
     try:
-        channel = user_service.request_phone_verification(db, payload.phone_number, user=current_user)
+        phone_number = user_service._normalize_phone_number(payload.phone_number)
+        channel = user_service.request_phone_verification(db, phone_number, user=current_user)
         db.commit()
-        return DataResponse(data=PhoneVerificationResponse(status="sent", channel=channel))
+        return DataResponse(data=PhoneVerificationResponse(
+            status="sent", channel=channel, phone_number=phone_number
+        ))
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc

@@ -69,6 +69,8 @@ class ConnectOnboardResponse(BaseModel):
     account_id: str
     charges_enabled: bool
     payouts_enabled: bool
+    platform_fee_percent: float
+    fee_disclosure: str
 
 
 class ConnectDocumentResponse(BaseModel):

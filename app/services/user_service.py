@@ -17,6 +17,7 @@ from app.utils.uk_licence import validate_uk_licence
 from app.repositories.booking_repo import BookingRepository
 from app.repositories.user_repo import UserRepository
 from app.services.storage_service import StorageService
+from app.services.email_service import EmailService
 from app.utils.datetime import ensure_utc, now_utc
 from app.utils.pagination import normalize_pagination
 
@@ -94,6 +95,7 @@ class UserService:
     def request_phone_verification(self, db: Session, phone_number: str, user=None) -> str:
         """Send OTP to phone_number. Saves to user profile if authenticated, else stores in Redis."""
         from app.services import otp_service
+        phone_number = self._normalize_phone_number(phone_number)
         token = f"{secrets.randbelow(1000000):06d}"
         if user is not None:
             user.phone_number = phone_number
@@ -104,12 +106,21 @@ class UserService:
             # Unauthenticated — store OTP in Redis keyed by phone number
             otp_service.set_phone_otp(phone_number, token)
         channel = otp_service.next_phone_channel(phone_number)
-        logger.info("[DEV] Phone OTP for %s: %s", phone_number, token)
         self._send_phone_otp(phone_number, token, channel)
         return channel
 
+    @staticmethod
+    def _normalize_phone_number(phone_number: str) -> str:
+        """Remove a national trunk zero mistakenly included after an international code."""
+        compact = re.sub(r"[\s()-]", "", phone_number)
+        for country_code in ("+44", "+234"):
+            if compact.startswith(country_code + "0"):
+                return country_code + compact[len(country_code) + 1:]
+        return compact
+
     def _send_phone_otp(self, phone_number: str, token: str, channel: str) -> None:
         import json
+        from urllib.error import HTTPError
         from urllib import request as http_request
         settings = get_settings()
         if not settings.termii_api_key or not settings.termii_sender_id:
@@ -117,11 +128,12 @@ class UserService:
         base_url = settings.termii_base_url.rstrip("/")
 
         payload = {
-            "to": phone_number,
+            # Termii requires E.164 digits without the leading plus sign.
+            "to": phone_number.lstrip("+"),
             "from": settings.termii_sender_id,
             "sms": f"Your Rideway verification code is {token}. Valid for 10 minutes.",
             "type": "plain",
-            "channel": "generic",
+            "channel": "dnd",
             "api_key": settings.termii_api_key,
         }
         endpoint = f"{base_url}/api/sms/send"
@@ -136,11 +148,17 @@ class UserService:
             with http_request.urlopen(req, timeout=10) as resp:
                 resp_body = resp.read().decode("utf-8")
                 logger.info("[TERMII] %s → %s %s", endpoint, resp.status, resp_body)
-        except Exception as e:
-            logger.warning("[TERMII] delivery failed: %s", e)
+        except HTTPError as e:
+            # Termii's 4xx body contains the actionable rejection reason.
+            detail = e.read().decode("utf-8", errors="replace")[:500]
+            logger.warning("[TERMII] delivery failed (HTTP %s): %s", e.code, detail)
+        except Exception:
+            logger.exception("[TERMII] delivery failed")
 
     def verify_phone(self, db: Session, code: str, phone_number: str | None = None, user=None) -> dict:
         from app.services import otp_service
+        if phone_number:
+            phone_number = self._normalize_phone_number(phone_number)
         if user is not None:
             if not user.phone_verification_token or user.phone_verification_token != code:
                 raise ValueError("Invalid verification code")
@@ -301,7 +319,9 @@ class UserService:
         user.selfie_url = url
         if user.identity_verification_status is None:
             user.identity_verification_status = IdentityVerificationStatus.PENDING
-        return self.user_repo.update(db, user)
+        updated = self.user_repo.update(db, user)
+        self._notify_admin_document_upload(user, "selfie")
+        return updated
 
     def submit_id_document(self, db: Session, user: User, content: bytes, content_type: str | None) -> User:
         if not content_type or not content_type.startswith("image/"):
@@ -312,7 +332,26 @@ class UserService:
         user.id_document_url = url
         if user.identity_verification_status is None:
             user.identity_verification_status = IdentityVerificationStatus.PENDING
-        return self.user_repo.update(db, user)
+        updated = self.user_repo.update(db, user)
+        self._notify_admin_document_upload(user, "identity document")
+        return updated
+
+    @staticmethod
+    def _notify_admin_document_upload(user: User, document_type: str) -> None:
+        settings = get_settings()
+        if not settings.admin_email:
+            logger.warning("Admin upload notification skipped: ADMIN_EMAIL is not configured")
+            return
+        try:
+            EmailService().send_admin_verification_alert(
+                admin_email=settings.admin_email,
+                driver_name=f"{user.first_name or ''} {user.last_name or ''}".strip() or "Unknown",
+                driver_email=user.email,
+                driver_id=str(user.id),
+                document_type=document_type,
+            )
+        except Exception:
+            logger.exception("Admin notification failed for uploaded %s", document_type)
 
     def approve_identity(self, db: Session, actor: User, user_id: UUID, email_service=None) -> User:
         if not actor.is_admin:

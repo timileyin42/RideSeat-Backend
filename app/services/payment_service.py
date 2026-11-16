@@ -507,6 +507,11 @@ class PaymentService:
             "account_id": account_id,
             "charges_enabled": account.get("charges_enabled", False),
             "payouts_enabled": account.get("payouts_enabled", False),
+            "platform_fee_percent": PLATFORM_FEE_PERCENT * 100,
+            "fee_disclosure": (
+                f"Rideway keeps {PLATFORM_FEE_PERCENT * 100:g}% of each completed ride. "
+                f"The remaining {100 - PLATFORM_FEE_PERCENT * 100:g}% goes to your payout balance."
+            ),
         }
 
     def upload_identity_document(self, driver_id: UUID, file_bytes: bytes, filename: str, purpose: str) -> dict:

@@ -118,6 +118,7 @@ class EmailService:
         driver_name: str,
         driver_email: str,
         driver_id: str,
+        document_type: str = "identity documents",
     ) -> None:
         html = self._render_template(
             "admin_verification_alert.html",
@@ -125,6 +126,7 @@ class EmailService:
                 "driver_name": driver_name,
                 "driver_email": driver_email,
                 "driver_id": driver_id,
+                "document_type": document_type,
             },
         )
         self._send(admin_email, f"[Action required] Driver verification: {driver_name}", html)
