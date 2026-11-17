@@ -97,6 +97,8 @@ class UserService:
         from app.services import otp_service
         phone_number = self._normalize_phone_number(phone_number)
         token = f"{secrets.randbelow(1000000):06d}"
+        channel = "sms"
+        self._send_phone_otp(phone_number, token)
         if user is not None:
             user.phone_number = phone_number
             user.phone_verification_token = token
@@ -105,8 +107,6 @@ class UserService:
         else:
             # Unauthenticated — store OTP in Redis keyed by phone number
             otp_service.set_phone_otp(phone_number, token)
-        channel = otp_service.next_phone_channel(phone_number)
-        self._send_phone_otp(phone_number, token, channel)
         return channel
 
     @staticmethod
@@ -118,22 +118,25 @@ class UserService:
                 return country_code + compact[len(country_code) + 1:]
         return compact
 
-    def _send_phone_otp(self, phone_number: str, token: str, channel: str) -> None:
+    def _send_phone_otp(self, phone_number: str, token: str) -> None:
         import json
         from urllib.error import HTTPError
         from urllib import request as http_request
         settings = get_settings()
         if not settings.termii_api_key or not settings.termii_sender_id:
-            return  # Termii not configured — skip silently
+            raise RuntimeError("Termii SMS is not configured")
         base_url = settings.termii_base_url.rstrip("/")
 
+        # This Termii workspace has no GB DND route. Use generic outside Nigeria;
+        # Nigeria retains DND for transactional messages.
+        route = "dnd" if phone_number.startswith("+234") else "generic"
         payload = {
             # Termii requires E.164 digits without the leading plus sign.
             "to": phone_number.lstrip("+"),
             "from": settings.termii_sender_id,
             "sms": f"Your Rideway verification code is {token}. Valid for 10 minutes.",
             "type": "plain",
-            "channel": "dnd",
+            "channel": route,
             "api_key": settings.termii_api_key,
         }
         endpoint = f"{base_url}/api/sms/send"
@@ -152,8 +155,10 @@ class UserService:
             # Termii's 4xx body contains the actionable rejection reason.
             detail = e.read().decode("utf-8", errors="replace")[:500]
             logger.warning("[TERMII] delivery failed (HTTP %s): %s", e.code, detail)
+            raise RuntimeError("SMS delivery failed; please retry") from e
         except Exception:
             logger.exception("[TERMII] delivery failed")
+            raise RuntimeError("SMS delivery failed; please retry")
 
     def verify_phone(self, db: Session, code: str, phone_number: str | None = None, user=None) -> dict:
         from app.services import otp_service

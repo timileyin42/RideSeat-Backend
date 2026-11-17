@@ -131,6 +131,9 @@ def request_phone_verification(
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        db.rollback()
+        raise HTTPException(status_code=502, detail="SMS delivery failed. Please retry shortly.") from exc
 
 
 @router.post("/me/phone/verify", response_model=DataResponse[dict])
