@@ -101,6 +101,7 @@ class UserService:
         self._send_phone_otp(phone_number, token)
         if user is not None:
             user.phone_number = phone_number
+            user.is_phone_verified = False
             user.phone_verification_token = token
             user.phone_verification_expires_at = now_utc() + timedelta(minutes=10)
             self.user_repo.update(db, user)
@@ -165,6 +166,10 @@ class UserService:
         if phone_number:
             phone_number = self._normalize_phone_number(phone_number)
         if user is not None:
+            # A previous successful verify may have committed before an older
+            # response serializer failed. Let client retries observe success.
+            if user.is_phone_verified and not user.phone_verification_token:
+                return {"user": user, "phone_number": user.phone_number}
             if not user.phone_verification_token or user.phone_verification_token != code:
                 raise ValueError("Invalid verification code")
             if not user.phone_verification_expires_at or ensure_utc(user.phone_verification_expires_at) < now_utc():

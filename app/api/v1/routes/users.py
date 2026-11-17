@@ -146,7 +146,12 @@ def verify_phone(
         result = user_service.verify_phone(db, payload.code, phone_number=payload.phone_number, user=current_user)
         db.commit()
         if result["user"] is not None:
-            return DataResponse(data={"verified": True, "phone_number": result["phone_number"], "user": result["user"]})
+            user_data = UserPrivateResponse.model_validate(result["user"]).model_dump(mode="json")
+            return DataResponse(data={
+                "verified": True,
+                "phone_number": result["phone_number"],
+                "user": user_data,
+            })
         return DataResponse(data={"verified": True, "phone_number": result["phone_number"]})
     except ValueError as exc:
         db.rollback()
